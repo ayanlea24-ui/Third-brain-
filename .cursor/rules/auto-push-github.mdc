@@ -1,0 +1,16 @@
+---
+description: Push to GitHub automatically after code changes using saved SSH auth
+alwaysApply: true
+---
+
+# Auto-push to GitHub
+
+After making code changes in this project:
+
+1. Commit with a clear message when the work is complete (user does not need to ask).
+2. Push to GitHub immediately using saved SSH auth — do not ask the user to push.
+3. Remote: `git@github.com:ayanlea24-ui/Third-brain-.git` on branch `main`.
+4. If HTTPS remote fails, use `git remote set-url origin git@github.com:ayanlea24-ui/Third-brain-.git` then push.
+5. Never commit `.env` or secrets (respect `.gitignore`).
+
+Local dev uses `npm run dev`; production on Render uses `npm start`.
