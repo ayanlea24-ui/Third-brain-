@@ -1,0 +1,4 @@
+{
+  "watch": ["app.js", "learning-workspace.js", "learning-curriculum.js", ".env"],
+  "ext": "js,json,env"
+}
