@@ -10587,6 +10587,13 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '.' + p + '-log-table td:nth-child(2){text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}' +
     '.' + p + '-log-del{border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px 6px;line-height:1;}' +
     '.' + p + '-log-del:hover{color:#b91c1c;}' +
+    '.' + p + '-log-edit{border:1px solid #e5e7eb;background:#fff;color:#475569;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit;}' +
+    '.' + p + '-log-edit:hover{background:#f8fafc;border-color:#cbd5e1;color:#0f172a;}' +
+    '.' + p + '-log-actions{white-space:nowrap;text-align:right;}' +
+    '.' + p + '-log-actions .'+p+'-log-edit{margin-right:6px;}' +
+    '.' + p + '-log-editing{background:#fffbeb;}' +
+    '#'+p+'-log-btn.'+p+'-log-btn-edit{background:#b45309;border-color:#b45309;}' +
+    '#'+p+'-log-btn.'+p+'-log-btn-edit:hover{background:#92400e;border-color:#92400e;}' +
     '.' + p + '-log-alloc{font-size:12px;color:#475569;line-height:1.4;max-width:18rem;}' +
     '.' + p + '-actions{display:flex;flex-wrap:wrap;gap:10px;margin-top:12px;}' +
     '.' + p + '-actions button{border:1px solid #e5e7eb;background:#fff;color:#111827;border-radius:6px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font:inherit;}' +
@@ -10729,7 +10736,9 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     summaryTitle: cfg.summaryTitle || cfg.pageTitle + ' summary',
     summaryFileName: cfg.summaryFileName || 'summary.txt',
     paidLabel: cfg.paidLabel,
-    moPaySuffix: cfg.moPaySuffix
+    moPaySuffix: cfg.moPaySuffix,
+    logBtn: cfg.logBtn,
+    logUpdateBtn: cfg.logUpdateBtn || 'Update payment'
   };
   const script =
     '<script>' +
@@ -10786,7 +10795,12 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'function refreshPayTargetSelect(){var sel=document.getElementById(gid("log-target"));if(!sel)return;var cur=sel.value;sel.innerHTML="<option value=\\"\\">Auto (by pay order)</option>";orderedRows().forEach(function(tr,i){var id=tr.getAttribute("data-row-id")||"";var lab=tr.querySelector("."+P+"-debt-label-inp");var lbl=lab?String(lab.value||"").trim():"";if(!lbl)lbl="Item "+(i+1);var bal=tr.querySelector("."+P+"-balance");var balTxt=bal?fmt(parseNum(bal.value)):"";var opt=document.createElement("option");opt.value=id;opt.textContent=lbl+(balTxt?" ("+balTxt+")":"");sel.appendChild(opt);});if(cur){try{sel.value=cur;}catch(e){}}}' +
     'function applyPayment(amt,targetId){var left=amt;var allocs=[];var rows=orderedRows();if(targetId){for(var j=0;j<rows.length;j++){var trT=rows[j];if(trT.getAttribute("data-row-id")!==targetId)continue;var inpT=trT.querySelector("."+P+"-balance");var labT=trT.querySelector("."+P+"-debt-label-inp");if(!inpT)break;var balT=parseNum(inpT.value);var takeT=Math.min(balT,left);if(takeT>0){inpT.value=String(Math.round((balT-takeT)*100)/100);left-=takeT;var lblT=labT?String(labT.value||"").trim():"";allocs.push({id:targetId,label:lblT||"Selected item",amount:Math.round(takeT*100)/100});}break;}if(left>0.009){var extra=Math.round(left*100)/100;allocs.push({id:"",label:"Unapplied (over balance)",amount:extra});}return allocs;}for(var i=0;i<rows.length;i++){if(left<=0)break;var tr=rows[i];var inp=tr.querySelector("."+P+"-balance");var lab=tr.querySelector("."+P+"-debt-label-inp");if(!inp)continue;var bal=parseNum(inp.value);var take=Math.min(bal,left);if(take>0){inp.value=String(Math.round((bal-take)*100)/100);left-=take;var lbl=lab?String(lab.value||"").trim():"";allocs.push({id:tr.getAttribute("data-row-id")||"",label:lbl||("Item "+(i+1)),amount:Math.round(take*100)/100});}}return allocs;}' +
     'function formatAlloc(allocs){if(!allocs||!allocs.length)return "—";return allocs.map(function(a){return (a.label||"Item")+" "+fmt(a.amount);}).join(", ");}' +
-    'function addLogRow(row,prepend){var tr=document.createElement("tr");tr.setAttribute("data-date",row.date);tr.setAttribute("data-amt",row.amount);if(row.payTarget)tr.setAttribute("data-target",row.payTarget);if(row.allocations&&row.allocations.length)tr.setAttribute("data-alloc",JSON.stringify(row.allocations));tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+fmt(parseNum(row.amount))+"</td><td class=\\""+P+"-log-alloc\\">"+esc(formatAlloc(row.allocations))+"</td><td class=\\""+P+"-log-note\\">"+esc(row.note||"")+"</td><td><button type=\\"button\\" class=\\""+P+"-log-del\\" title=\\"Remove\\" aria-label=\\"Remove payment\\">×</button></td>";if(prepend&&elLogTb.firstChild)elLogTb.insertBefore(tr,elLogTb.firstChild);else elLogTb.appendChild(tr);}' +
+    'function parseAllocsFromTr(tr){var allocRaw=tr.getAttribute("data-alloc");if(!allocRaw)return [];try{return JSON.parse(allocRaw)||[];}catch(e){return [];}}' +
+    'function reverseAllocations(allocs){if(!allocs||!allocs.length)return;allocs.forEach(function(a){if(!a||!a.id)return;var rows=orderedRows();for(var i=0;i<rows.length;i++){if(rows[i].getAttribute("data-row-id")===a.id){var inp=rows[i].querySelector("."+P+"-balance");if(inp)inp.value=String(Math.round((parseNum(inp.value)+parseNum(a.amount))*100)/100);if(CFG.paidOffStatus)syncRowPaidOff(rows[i]);break;}}});}' +
+    'var _editLogTr=null;' +
+    'function resetLogBtn(){var btn=document.getElementById(gid("log-btn"));if(!btn)return;btn.textContent=CFG.logBtn;btn.classList.remove(P+"-log-btn-edit");}' +
+    'function startEditLogRow(tr){if(!tr)return;if(_editLogTr&&_editLogTr!==tr)_editLogTr.classList.remove(P+"-log-editing");_editLogTr=tr;tr.classList.add(P+"-log-editing");var dateInp=document.getElementById(gid("log-date"));var amtInp=document.getElementById(gid("log-amt"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));if(dateInp)dateInp.value=tr.getAttribute("data-date")||"";if(amtInp)amtInp.value=tr.getAttribute("data-amt")||"";if(noteInp){var noteCell=tr.querySelector("."+P+"-log-note");noteInp.value=noteCell?String(noteCell.textContent||""):"";}if(targetSel)targetSel.value=tr.getAttribute("data-target")||"";var btn=document.getElementById(gid("log-btn"));if(btn){btn.textContent=CFG.logUpdateBtn;btn.classList.add(P+"-log-btn-edit");}try{amtInp&&amtInp.focus();}catch(e){}}' +
+    'function addLogRow(row,prepend){var tr=document.createElement("tr");tr.setAttribute("data-date",row.date);tr.setAttribute("data-amt",row.amount);if(row.payTarget)tr.setAttribute("data-target",row.payTarget);if(row.allocations&&row.allocations.length)tr.setAttribute("data-alloc",JSON.stringify(row.allocations));tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+fmt(parseNum(row.amount))+"</td><td class=\\""+P+"-log-alloc\\">"+esc(formatAlloc(row.allocations))+"</td><td class=\\""+P+"-log-note\\">"+esc(row.note||"")+"</td><td class=\\""+P+"-log-actions\\"><button type=\\"button\\" class=\\""+P+"-log-edit\\" title=\\"Edit payment\\" aria-label=\\"Edit payment\\">Edit</button><button type=\\"button\\" class=\\""+P+"-log-del\\" title=\\"Remove\\" aria-label=\\"Remove payment\\">×</button></td>";if(prepend&&elLogTb.firstChild)elLogTb.insertBefore(tr,elLogTb.firstChild);else elLogTb.appendChild(tr);}' +
     'function loadState(d){if(!d){loadDebtRows(null);recalc();return;}var items=migrateDebtItems(d);loadDebtRows(items);if(elIncome&&d.incomeMonthly!=null&&!d.useIncomePage)elIncome.value=String(d.incomeMonthly);var useEl=document.getElementById(gid("use-income-page"));if(useEl)useEl.checked=!!d.useIncomePage;if(elPct&&d.debtPct!=null)elPct.value=String(d.debtPct);var bl=document.getElementById(gid("baseline"));if(bl&&d.baseline!=null)bl.value=String(d.baseline);if(CFG.targetDate){var td=document.getElementById(gid("target-date"));if(td&&d.targetDate!=null)td.value=String(d.targetDate);}if(elLogTb){elLogTb.innerHTML="";var pays=d.payments||[];for(var i=pays.length-1;i>=0;i--)addLogRow(pays[i],false);}recalc();}' +
     'elDebtTb.addEventListener("input",function(ev){var t=ev.target;if(t&&(t.classList.contains(P+"-debt-label-inp")||t.classList.contains(P+"-balance")))recalc();});' +
     'elDebtTb.addEventListener("change",function(ev){var t=ev.target;if(t&&t.classList.contains(P+"-balance"))recalc();});' +
@@ -10798,8 +10812,8 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'if(useIncEl)useIncEl.addEventListener("change",recalc);' +
     'var targetEl=document.getElementById(gid("target-date"));if(targetEl){targetEl.addEventListener("change",recalc);targetEl.addEventListener("input",recalc);}' +
     'document.getElementById(gid("pull-income")).addEventListener("click",function(){wsGet(SKI,function(e,d){_incomePage=d;var u=document.getElementById(gid("use-income-page"));if(u)u.checked=true;recalc();});});' +
-    'document.getElementById(gid("log-btn")).addEventListener("click",function(){var amtInp=document.getElementById(gid("log-amt"));var dateInp=document.getElementById(gid("log-date"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));var amt=parseNum(amtInp&&amtInp.value);if(amt<=0){alert(CFG.logAlert);return;}var dt=dateInp&&dateInp.value?dateInp.value:new Date().toISOString().slice(0,10);var note=noteInp?String(noteInp.value||""):"";var targetId=targetSel?String(targetSel.value||""):"";var allocs=applyPayment(amt,targetId);if(CFG.paidOffStatus){orderedRows().forEach(function(tr){var inp=tr.querySelector("."+P+"-balance");if(inp&&parseNum(inp.value)<=0.009)syncRowPaidOff(tr,dt);});}addLogRow({date:dt,amount:String(amt),note:note,payTarget:targetId,allocations:allocs},true);if(amtInp)amtInp.value="";if(noteInp)noteInp.value="";if(targetSel)targetSel.value="";recalc();});' +
-    'if(elLogTb)elLogTb.addEventListener("click",function(ev){var b=ev.target.closest&&ev.target.closest("."+P+"-log-del");if(!b)return;var tr=b.closest("tr");if(tr&&tr.parentNode===elLogTb){tr.remove();recalc();}});' +
+    'document.getElementById(gid("log-btn")).addEventListener("click",function(){var amtInp=document.getElementById(gid("log-amt"));var dateInp=document.getElementById(gid("log-date"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));var amt=parseNum(amtInp&&amtInp.value);if(amt<=0){alert(CFG.logAlert);return;}var dt=dateInp&&dateInp.value?dateInp.value:new Date().toISOString().slice(0,10);var note=noteInp?String(noteInp.value||""):"";var targetId=targetSel?String(targetSel.value||""):"";if(_editLogTr){reverseAllocations(parseAllocsFromTr(_editLogTr));_editLogTr.remove();_editLogTr=null;resetLogBtn();}var allocs=applyPayment(amt,targetId);if(CFG.paidOffStatus){orderedRows().forEach(function(tr){var inp=tr.querySelector("."+P+"-balance");if(inp&&parseNum(inp.value)<=0.009)syncRowPaidOff(tr,dt);});}addLogRow({date:dt,amount:String(amt),note:note,payTarget:targetId,allocations:allocs},true);if(amtInp)amtInp.value="";if(noteInp)noteInp.value="";if(targetSel)targetSel.value="";recalc();});' +
+    'if(elLogTb)elLogTb.addEventListener("click",function(ev){var editBtn=ev.target.closest&&ev.target.closest("."+P+"-log-edit");if(editBtn){var trE=editBtn.closest("tr");if(trE&&trE.parentNode===elLogTb)startEditLogRow(trE);return;}var b=ev.target.closest&&ev.target.closest("."+P+"-log-del");if(!b)return;var tr=b.closest("tr");if(tr&&tr.parentNode===elLogTb){if(_editLogTr===tr){_editLogTr=null;resetLogBtn();}reverseAllocations(parseAllocsFromTr(tr));tr.remove();recalc();}});' +
     'document.getElementById(gid("lock-baseline")).addEventListener("click",function(){var t=sumDebtItems(readDebtsFromDom());var bl=document.getElementById(gid("baseline"));if(bl)bl.value=String(t);recalc();});' +
     'document.getElementById(gid("reset")).addEventListener("click",function(){if(!confirm(CFG.resetConfirm))return;wsPut(SK,null);location.reload();});' +
     'function summaryToast(msg){var el=document.getElementById(gid("summary-toast"));if(el)el.textContent=msg||"";if(msg){setTimeout(function(){if(el&&el.textContent===msg)el.textContent="";},2800);}}' +
@@ -10842,7 +10856,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     ? '<p id="' + p + '-income-summary" class="' + p + '-income-summary">Set income and a savings % to see your monthly wedding contribution.</p>'
     : '';
   const logTableHead =
-    '<thead><tr><th>Date</th><th>Amount</th><th>Applied to</th><th>Note</th><th><span class="visually-hidden">Remove</span></th></tr></thead>';
+    '<thead><tr><th>Date</th><th>Amount</th><th>Applied to</th><th>Note</th><th><span class="visually-hidden">Actions</span></th></tr></thead>';
   return (
     '<div class="analytics-toolbar">' +
     '<div>' +
@@ -11168,6 +11182,7 @@ function buildDebtTrackerWorkspaceHtml() {
     remainingLabel: 'Remaining',
     progressSub: 'Baseline tracks how much you started with',
     logBtn: 'Log payment',
+    logUpdateBtn: 'Update payment',
     paymentLabel: 'Payment (CAD)',
     lockBaseline: 'Set baseline from current total',
     resetBtn: 'Reset all data',
@@ -11233,6 +11248,7 @@ function buildMarriageCostWorkspaceHtml() {
     remainingLabel: 'Remaining',
     progressSub: 'Baseline tracks your starting wedding budget',
     logBtn: 'Log contribution',
+    logUpdateBtn: 'Update contribution',
     paymentLabel: 'Contribution (CAD)',
     lockBaseline: 'Set baseline from current total',
     resetBtn: 'Reset all data',
