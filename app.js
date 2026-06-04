@@ -10530,36 +10530,56 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '<style>' +
     '.' + p + '-panel{border:1px solid #e5e7eb;border-radius:12px;padding:20px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,0.06)}' +
     '.' + p + '-hint{margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.5;max-width:56em;}' +
-    '.' + p + '-grid{display:grid;gap:18px;}@media(min-width:900px){.' + p + '-grid{grid-template-columns:1fr 1fr;}}' +
-    '.' + p + '-block{border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;background:#fafafa;}' +
+    '.' + p + '-grid{display:flex;flex-direction:column;gap:18px;}' +
+    '.' + p + '-block{border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;background:#fafafa;min-width:0;}' +
+    '.' + p + '-block-owe{padding:16px 18px 18px;}' +
+    '.' + p + '-block-income{max-width:36rem;}' +
     '.' + p + '-block h2{margin:0 0 12px;font-size:15px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;}' +
     totalCardStyle +
     '.' + p + '-total-val{font-size:1.85rem;font-weight:800;color:#0f172a;margin:0;font-variant-numeric:tabular-nums;}' +
-    '.' + p + '-table-wrap{overflow:auto;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:12px;}' +
-    '.' + p + '-table{width:100%;border-collapse:collapse;min-width:480px;font-size:14px;}' +
-    '.' + p + '-table th{text-align:left;padding:10px 12px;background:#f8fafc;border-bottom:1px solid #e5e7eb;color:#334155;font-weight:700;}' +
-    '.' + p + '-table th:nth-child(2){text-align:right;width:11rem;}' +
-    '.' + p + '-table th:nth-child(3){width:5.5rem;text-align:center;}' +
-    '.' + p + '-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}' +
-    '.' + p + '-table td:nth-child(2){text-align:right;}' +
-    '.' + p + '-table td:nth-child(3){text-align:center;}' +
+    '.' + p + '-table-wrap{overflow-x:auto;-webkit-overflow-scrolling:touch;border:1px solid #e5e7eb;border-radius:10px;margin-bottom:12px;}' +
+    '.' + p + '-table{width:100%;border-collapse:collapse;font-size:14px;}' +
+    '.' + p + '-table th{text-align:left;padding:10px 12px;background:#f8fafc;border-bottom:1px solid #e5e7eb;color:#334155;font-weight:700;white-space:nowrap;}' +
+    '.' + p + '-table td{padding:10px 12px;border-bottom:1px solid #f1f5f9;vertical-align:middle;}' +
     '.' + p + '-table tr:last-child td{border-bottom:none;}' +
-    '.' + p + '-debt-label-inp{width:100%;box-sizing:border-box;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;font-weight:600;color:#334155;}' +
-    '.' + p + '-balance{width:100%;max-width:11rem;margin-left:auto;display:block;box-sizing:border-box;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;text-align:right;}' +
-    '.' + p + '-debt-remove{border:1px solid #e5e7eb;background:#fff;color:#64748b;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit;}' +
+    '.' + p + '-table-planner{min-width:920px;table-layout:fixed;}' +
+    '.' + p + '-table-planner-noprio{min-width:720px;}' +
+    '.' + p + '-col-prio{width:4.25rem;}' +
+    '.' + p + '-col-cat{width:auto;min-width:9.5rem;}' +
+    '.' + p + '-col-amt{width:6.75rem;}' +
+    '.' + p + '-col-status{width:10rem;}' +
+    '.' + p + '-col-act{width:5rem;}' +
+    '.' + p + '-table-simple th:nth-child(2){text-align:right;width:11rem;}' +
+    '.' + p + '-table-simple th:nth-child(3){width:5.5rem;text-align:center;}' +
+    '.' + p + '-table-simple td:nth-child(2){text-align:right;}' +
+    '.' + p + '-table-simple td:nth-child(3){text-align:center;}' +
+    '.' + p + '-debt-label-inp{width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;font-weight:600;color:#334155;}' +
+    '.' + p + '-balance{width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;text-align:right;font-variant-numeric:tabular-nums;}' +
+    '.' + p + '-num-inp::-webkit-outer-spin-button,.' + p + '-num-inp::-webkit-inner-spin-button{-webkit-appearance:none;margin:0;}' +
+    '.' + p + '-num-inp{-moz-appearance:textfield;appearance:textfield;}' +
+    '.' + p + '-debt-remove{white-space:nowrap;border:1px solid #e5e7eb;background:#fff;color:#64748b;border-radius:6px;padding:6px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit;}' +
     '.' + p + '-debt-remove:hover{background:#fef2f2;color:#b91c1c;border-color:#fecaca;}' +
     '.' + p + '-debt-actions{margin-top:12px;display:flex;flex-wrap:wrap;gap:10px;}' +
     '.' + p + '-debt-actions button{border:1px solid #e5e7eb;background:#fff;color:#111827;border-radius:6px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font:inherit;}' +
     '.' + p + '-debt-actions button:hover{background:#f9fafb;}' +
     addBtnStyle +
-    '.' + p + '-income-row{display:flex;flex-wrap:wrap;gap:12px;align-items:flex-end;margin-bottom:12px;}' +
-    '.' + p + '-income-row label{font-size:13px;font-weight:600;color:#334155;display:flex;flex-direction:column;gap:6px;min-width:140px;}' +
-    '.' + p + '-income-row input,.' + p + '-income-row select{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;}' +
+    '.' + p + '-income-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:12px;}' +
+    '@media(min-width:540px){.' + p + '-income-row{grid-template-columns:minmax(10rem,14rem) 1fr;align-items:end;}}' +
+    '.' + p + '-income-row label{font-size:13px;font-weight:600;color:#334155;display:flex;flex-direction:column;gap:6px;}' +
+    '.' + p + '-income-row input[type=number],.' + p + '-income-row select{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;width:100%;box-sizing:border-box;}' +
+    '.' + p + '-income-extras{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;}' +
+    '.' + p + '-income-extras label{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#334155;white-space:nowrap;}' +
+    '.' + p + '-income-extras label input{width:auto;margin:0;}' +
+    '#'+p+'-pull-income{border:1px solid #e5e7eb;background:#fff;color:#111827;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font:inherit;white-space:nowrap;}' +
+    '#'+p+'-pull-income:hover{background:#f9fafb;}' +
     '.' + p + '-pct-wrap{margin:12px 0;}' +
     '.' + p + '-pct-wrap label{display:block;font-size:13px;font-weight:600;color:#334155;margin:0 0 8px;}' +
-    '.' + p + '-pct-row{display:flex;flex-wrap:wrap;gap:12px;align-items:center;}' +
-    '.' + p + '-pct-row input[type=range]{flex:1;min-width:160px;max-width:320px;}' +
-    '.' + p + '-pct-num{width:4.5rem;text-align:center;font-weight:700;}' +
+    '.' + p + '-pct-row{display:grid;grid-template-columns:1fr auto auto;gap:10px 14px;align-items:center;}' +
+    '@media(max-width:520px){.' + p + '-pct-row{grid-template-columns:1fr;}}' +
+    '.' + p + '-pct-row input[type=range]{width:100%;min-width:0;max-width:none;margin:0;}' +
+    '.' + p + '-pct-num-wrap{display:flex;align-items:center;gap:2px;font-weight:700;color:#334155;}' +
+    '.' + p + '-pct-num{width:3rem;text-align:center;font-weight:700;border:1px solid #e2e8f0;border-radius:8px;padding:6px 4px;background:#fff;}' +
+    '.' + p + '-pct-summary{font-size:13px;color:#475569;white-space:nowrap;}' +
     '.' + p + '-proj{margin-top:14px;padding:14px 16px;border-radius:10px;border:1px solid #bbf7d0;background:linear-gradient(135deg,#ecfdf5,#fff);}' +
     '.' + p + '-proj-warn{border-color:#fde68a;background:linear-gradient(135deg,#fffbeb,#fff);}' +
     '.' + p + '-proj-none{border-color:#e5e7eb;background:#f8fafc;}' +
@@ -10615,7 +10635,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     (cfg.paymentPriority
       ? '.' +
         p +
-        '-prio-cell{white-space:nowrap;text-align:center;vertical-align:middle;width:5.5rem;}' +
+        '-prio-cell{white-space:nowrap;text-align:center;vertical-align:middle;}' +
         '.' +
         p +
         '-prio-num{display:inline-flex;align-items:center;justify-content:center;min-width:1.75rem;height:1.75rem;border-radius:999px;background:#fdf2f8;color:#9d174d;font-size:12px;font-weight:800;margin-bottom:4px;}' +
@@ -10660,7 +10680,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
         '-paid-badge{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#fff;background:#15803d;border-radius:999px;padding:3px 8px;}' +
         '.' +
         p +
-        '-paid-date{display:block;font-size:11px;color:#64748b;margin-top:4px;line-height:1.35;}' +
+        '-paid-date{display:block;font-size:11px;color:#64748b;margin-top:4px;line-height:1.35;word-break:break-word;}' +
         '.' +
         p +
         '-balance-paid{background:#ecfdf5;border-color:#bbf7d0;color:#15803d;}' +
@@ -10671,13 +10691,16 @@ function buildCostPlannerWorkspaceHtml(cfg) {
         p +
         '-table th.' +
         p +
-        '-th-amt{text-align:right;width:8.5rem;}' +
+        '-th-amt{text-align:right;}' +
         '.' +
         p +
-        '-orig-inp{width:100%;max-width:8.5rem;margin-left:auto;display:block;box-sizing:border-box;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;text-align:right;font-weight:600;color:#64748b;background:#f8fafc;}' +
+        '-status-cell{min-width:0;line-height:1.4;vertical-align:middle;}' +
         '.' +
         p +
-        '-paid-amt{font-weight:700;color:#15803d;}' +
+        '-orig-inp{width:100%;min-width:0;box-sizing:border-box;padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;text-align:right;font-weight:600;color:#64748b;background:#f8fafc;font-variant-numeric:tabular-nums;}' +
+        '.' +
+        p +
+        '-paid-amt{display:block;font-weight:700;color:#15803d;padding:4px 0;}' +
         '.' +
         p +
         '-pay-hint{margin:0 0 10px;font-size:12px;color:#64748b;line-height:1.45;}' +
@@ -10815,7 +10838,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'function ensureRowTarget(tr){if(!tr)return 0;var id=tr.getAttribute("data-row-id");var applied=sumAllocationsForId(id);var origInp=tr.querySelector("."+P+"-orig-inp");var inp=tr.querySelector("."+P+"-balance");var bal=inp?parseNum(inp.value):0;var tgt=origInp?parseNum(origInp.value):parseNum(tr.getAttribute("data-target-amt"));if(tgt<=0.009&&origInp){if(applied>0.009&&bal>0.009&&applied>bal+0.009)tgt=bal;else tgt=Math.round((bal+applied)*100)/100;if(tgt>0.009){origInp.value=String(tgt);tr.setAttribute("data-target-amt",String(tgt));}}else if(tgt>0.009){tr.setAttribute("data-target-amt",String(tgt));if(origInp&&!parseNum(origInp.value))origInp.value=String(tgt);}return tgt;}' +
     'function syncRowPaySummary(tr){if(!CFG.paidOffStatus||!tr)return;var id=tr.getAttribute("data-row-id");var applied=sumAllocationsForId(id);var target=ensureRowTarget(tr);var paidEl=tr.querySelector("."+P+"-paid-amt");if(paidEl)paidEl.textContent=fmt(applied);}' +
     'function syncRowPaidOff(tr,payDate){if(!CFG.paidOffStatus||!tr)return;syncRowPaySummary(tr);var inp=tr.querySelector("."+P+"-balance");var bal=inp?parseNum(inp.value):0;var id=tr.getAttribute("data-row-id");var applied=sumAllocationsForId(id);var target=ensureRowTarget(tr);var badge=tr.querySelector("."+P+"-paid-badge");var dateEl=tr.querySelector("."+P+"-paid-date");var fullyPaid=bal<=0.009||(target>0.009&&applied>=target-0.009);if(dateEl){if(applied>0.009&&target>0.009)dateEl.textContent=fmt(applied)+" paid of "+fmt(target)+" (from log)";else dateEl.textContent="";}if(fullyPaid){tr.classList.add(P+"-row-paid-off");tr.setAttribute("data-paid-off","1");var pd=tr.getAttribute("data-paid-off-date");if(!pd){if(payDate)pd=payDate;else pd=lastPaymentDateForId(id);if(pd)tr.setAttribute("data-paid-off-date",pd);}if(badge)badge.hidden=false;if(dateEl&&pd)dateEl.textContent="Paid "+pd+" · "+fmt(applied)+" of "+fmt(target);if(inp){inp.readOnly=true;inp.classList.add(P+"-balance-paid");}var origInp=tr.querySelector("."+P+"-orig-inp");if(origInp){origInp.readOnly=true;origInp.classList.add(P+"-balance-paid");}}else{tr.classList.remove(P+"-row-paid-off");tr.removeAttribute("data-paid-off");tr.removeAttribute("data-paid-off-date");if(badge)badge.hidden=true;if(inp){inp.readOnly=false;inp.classList.remove(P+"-balance-paid");}var origInp2=tr.querySelector("."+P+"-orig-inp");if(origInp2){origInp2.readOnly=false;origInp2.classList.remove(P+"-balance-paid");}}}' +
-    'function debtRowAmountCells(it){var balance=String(it.balance!=null?it.balance:"0");var orig=it.target!=null&&parseNum(it.target)>0?String(it.target):balance;var rem="<td><input class=\\""+P+"-balance\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(balance)+"\\"/></td>";if(!CFG.paidOffStatus)return rem;return "<td class=\\""+P+"-amt-cell\\"><input class=\\""+P+"-orig-inp\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(orig)+"\\" aria-label=\\"Original amount\\"/></td><td class=\\""+P+"-amt-cell\\"><span class=\\""+P+"-paid-amt\\">"+fmt(0)+"</span></td>"+rem;}' +
+    'function debtRowAmountCells(it){var balance=String(it.balance!=null?it.balance:"0");var orig=it.target!=null&&parseNum(it.target)>0?String(it.target):balance;var rem="<td><input class=\\""+P+"-balance "+P+"-num-inp\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(balance)+"\\"/></td>";if(!CFG.paidOffStatus)return rem;return "<td class=\\""+P+"-amt-cell\\"><input class=\\""+P+"-orig-inp "+P+"-num-inp\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(orig)+"\\" aria-label=\\"Original amount\\"/></td><td class=\\""+P+"-amt-cell\\"><span class=\\""+P+"-paid-amt\\">"+fmt(0)+"</span></td>"+rem;}' +
     'function makeDebtRow(it){it=it||{};var id=it.id||newRowId();var label=it.label!=null?it.label:"";var balance=String(it.balance!=null?it.balance:"0");var tr=document.createElement("tr");tr.setAttribute("data-row-id",id);if(it.target!=null&&parseNum(it.target)>0)tr.setAttribute("data-target-amt",String(it.target));if(it.paidOff){tr.setAttribute("data-paid-off","1");if(it.paidOffDate)tr.setAttribute("data-paid-off-date",String(it.paidOffDate));}var statusCell=CFG.paidOffStatus?"<td class=\\""+P+"-status-cell\\"><span class=\\""+P+"-paid-badge\\" hidden>Paid off</span><span class=\\""+P+"-paid-date\\"></span></td>":"";var amtCells=debtRowAmountCells(it);if(CFG.paymentPriority){tr.innerHTML="<td class=\\""+P+"-prio-cell\\"><span class=\\""+P+"-prio-num\\">1</span><div class=\\""+P+"-prio-btns\\"><button type=\\"button\\" class=\\""+P+"-prio-up\\" title=\\"Pay sooner\\">↑</button><button type=\\"button\\" class=\\""+P+"-prio-down\\" title=\\"Pay later\\">↓</button></div></td><td><input class=\\""+P+"-debt-label-inp\\" type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Category name\\" value=\\""+esc(label)+"\\"/></td>"+amtCells+statusCell+"<td><button type=\\"button\\" class=\\""+P+"-debt-remove\\">Remove</button></td>";}else{tr.innerHTML="<td><input class=\\""+P+"-debt-label-inp\\" type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Category name\\" value=\\""+esc(label)+"\\"/></td>"+amtCells+statusCell+"<td><button type=\\"button\\" class=\\""+P+"-debt-remove\\">Remove</button></td>";}if(CFG.paidOffStatus){ensureRowTarget(tr);syncRowPaySummary(tr);syncRowPaidOff(tr);}return tr;}' +
     'function loadDebtRows(items){elDebtTb.innerHTML="";var list=items&&items.length?items.slice():(DEFAULTS&&DEFAULTS.length?DEFAULTS.slice():[]);if(!list.length&&DEFAULTS&&DEFAULTS.length)list=DEFAULTS.slice();if(CFG.paymentPriority&&list.length){list.sort(function(a,b){return(parseNum(a.priority)||999)-(parseNum(b.priority)||999);});}for(var i=0;i<list.length;i++){elDebtTb.appendChild(makeDebtRow(list[i]));}renumberPriorities();}' +
     'function migrateDebtItems(d){if(!d)return null;if(Array.isArray(d.debtItems)&&d.debtItems.length){return d.debtItems.map(function(it,idx){var row=Object.assign({},it);if(!row.id)row.id=newRowId();if(CFG.paymentPriority&&row.priority==null)row.priority=idx+1;return row;});}if(d.debts&&!Array.isArray(d.debts)&&LEGACY_KEYS){var out=[],k;for(k=0;k<LEGACY_KEYS.length;k++){var key=LEGACY_KEYS[k];out.push({id:newRowId(),label:LEGACY_LABELS[key],balance:String(d.debts[key]!=null?d.debts[key]:"0"),priority:k+1});}return out;}return null;}' +
@@ -10867,6 +10890,42 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'setTimeout(function(){hydrateStore(null);},8000);' +
     '})();<' +
     '/script>';
+  const tablePlanner = cfg.paidOffStatus;
+  const tableClass =
+    p +
+    '-table' +
+    (tablePlanner ? ' ' + p + '-table-planner' + (cfg.paymentPriority ? '' : ' ' + p + '-table-planner-noprio') : ' ' + p + '-table-simple');
+  const tableColGroup = tablePlanner
+    ? cfg.paymentPriority
+      ? '<colgroup><col class="' +
+        p +
+        '-col-prio"><col class="' +
+        p +
+        '-col-cat"><col class="' +
+        p +
+        '-col-amt"><col class="' +
+        p +
+        '-col-amt"><col class="' +
+        p +
+        '-col-amt"><col class="' +
+        p +
+        '-col-status"><col class="' +
+        p +
+        '-col-act"></colgroup>'
+      : '<colgroup><col class="' +
+        p +
+        '-col-cat"><col class="' +
+        p +
+        '-col-amt"><col class="' +
+        p +
+        '-col-amt"><col class="' +
+        p +
+        '-col-amt"><col class="' +
+        p +
+        '-col-status"><col class="' +
+        p +
+        '-col-act"></colgroup>'
+    : '';
   const payColsHead = cfg.paidOffStatus
     ? '<th scope="col" class="' +
       p +
@@ -10948,7 +11007,9 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '-grid">' +
     '<div class="' +
     p +
-    '-block">' +
+    '-block ' +
+    p +
+    '-block-owe">' +
     '<h2>' +
     escHtml(cfg.oweSectionTitle) +
     '</h2>' +
@@ -10957,10 +11018,11 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '<div class="' +
     p +
     '-table-wrap"><table class="' +
-    p +
-    '-table" aria-label="' +
+    tableClass +
+    '" aria-label="' +
     escAttr(cfg.tableAria) +
     '">' +
+    tableColGroup +
     tableHeadRow +
     '<tbody id="' +
     p +
@@ -10980,7 +11042,9 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '</div>' +
     '<div class="' +
     p +
-    '-block">' +
+    '-block ' +
+    p +
+    '-block-income">' +
     '<h2>' +
     escHtml(cfg.incomeSectionTitle) +
     '</h2>' +
@@ -10989,15 +11053,21 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '<div class="' +
     p +
     '-income-row">' +
-    '<label>Monthly income (CAD)<input id="' +
+    '<label>Monthly income (CAD)<input class="' +
+    p +
+    '-num-inp" id="' +
     p +
     '-income" type="number" min="0" step="0.01" inputmode="decimal" value="0"/></label>' +
+    '<div class="' +
+    p +
+    '-income-extras">' +
     '<label><input type="checkbox" id="' +
     p +
     '-use-income-page"/> Use Income page total</label>' +
     '<button type="button" id="' +
     p +
     '-pull-income">Refresh from Income</button>' +
+    '</div>' +
     '</div>' +
     '<div class="' +
     p +
@@ -11013,14 +11083,18 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '<input id="' +
     p +
     '-pct" type="range" min="0" max="100" step="1" value="20"/>' +
-    '<input class="' +
+    '<span class="' +
+    p +
+    '-pct-num-wrap"><input class="' +
     p +
     '-pct-num" id="' +
     p +
     '-pct-disp" type="text" readonly value="20" aria-label="' +
     escAttr(cfg.pctAria) +
-    '"/>%' +
-    '<span style="font-size:13px;color:#475569">→ <strong id="' +
+    '"/>%</span>' +
+    '<span class="' +
+    p +
+    '-pct-summary">→ <strong id="' +
     p +
     '-mo-pay">' +
     escHtml(zeroFmt) +
