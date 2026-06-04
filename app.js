@@ -4563,6 +4563,7 @@ function isGuestAllowedRequest(req) {
   if (method === 'GET' && p === '/tickets') return true;
   if (method === 'GET' && p === '/debt-tracker') return true;
   if (method === 'GET' && p === '/marriage-cost') return true;
+  if (method === 'GET' && p === '/dashboard') return true;
   if (
     method === 'GET' &&
     (p === '/daily-tasks' ||
@@ -4852,6 +4853,7 @@ function thirdBrainWorkspaceSidebar(activePath) {
     '</div></div>' +
     '<nav class="analytics-nav-links" aria-label="Third brain">' +
     nav('/', 'Home') +
+    nav('/dashboard', 'Dashboard') +
     '<div class="analytics-nav-section">Money</div>' +
     nav('/monthly-expenses', 'Monthly expenses') +
     nav('/income', 'Income') +
@@ -10658,11 +10660,14 @@ function buildCostPlannerWorkspaceHtml(cfg) {
         '-paid-badge{display:inline-block;font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:0.04em;color:#fff;background:#15803d;border-radius:999px;padding:3px 8px;}' +
         '.' +
         p +
-        '-paid-date{display:block;font-size:11px;color:#64748b;margin-top:4px;}' +
+        '-paid-date{display:block;font-size:11px;color:#64748b;margin-top:4px;line-height:1.35;}' +
         '.' +
         p +
         '-balance-paid{background:#ecfdf5;border-color:#bbf7d0;color:#15803d;}' +
-        '.' +
+        ''
+      : '') +
+    (cfg.paymentCalendar
+      ? '.' +
         p +
         '-cal-block{margin-top:20px;padding-top:18px;border-top:1px solid #e5e7eb;}' +
         '.' +
@@ -10774,7 +10779,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'function toMo(a,f){var v=parseNum(a);if(f==="biweekly")return v*26/12;if(f==="weekly")return v*52/12;if(f==="annual")return v/12;return v;}' +
     'function readIncomePage(){var d=_incomePage;if(!d||!d.sources||!d.sources.length)return 0;var sum=0,s,i,src,lines,L;for(s=0;s<d.sources.length;s++){src=d.sources[s];lines=src&&src.lines?src.lines:[];for(i=0;i<lines.length;i++){L=lines[i];sum+=toMo(L&&L.amount,L&&L.frequency||"monthly");}}return sum;}' +
     'function newRowId(){return "r"+String(Date.now())+Math.random().toString(36).slice(2,8);}' +
-    'function readDebtsFromDom(){var out=[];elDebtTb.querySelectorAll("tr").forEach(function(tr,i){var lab=tr.querySelector("."+P+"-debt-label-inp");var amt=tr.querySelector("."+P+"-balance");if(!lab||!amt)return;var row={id:tr.getAttribute("data-row-id")||newRowId(),label:String(lab.value||""),balance:String(amt.value||"")};if(CFG.paymentPriority)row.priority=parseNum(tr.getAttribute("data-priority"))||(i+1);if(CFG.paidOffStatus&&tr.getAttribute("data-paid-off")==="1"){row.paidOff=true;var pod=tr.getAttribute("data-paid-off-date");if(pod)row.paidOffDate=pod;}if(!tr.getAttribute("data-row-id"))tr.setAttribute("data-row-id",row.id);out.push(row);});return out;}' +
+    'function readDebtsFromDom(){var out=[];elDebtTb.querySelectorAll("tr").forEach(function(tr,i){var lab=tr.querySelector("."+P+"-debt-label-inp");var amt=tr.querySelector("."+P+"-balance");if(!lab||!amt)return;var row={id:tr.getAttribute("data-row-id")||newRowId(),label:String(lab.value||""),balance:String(amt.value||"")};if(CFG.paymentPriority)row.priority=parseNum(tr.getAttribute("data-priority"))||(i+1);if(CFG.paidOffStatus){var tgt=tr.getAttribute("data-target-amt");if(tgt)row.target=String(tgt);if(tr.getAttribute("data-paid-off")==="1"){row.paidOff=true;var pod=tr.getAttribute("data-paid-off-date");if(pod)row.paidOffDate=pod;}}if(!tr.getAttribute("data-row-id"))tr.setAttribute("data-row-id",row.id);out.push(row);});return out;}' +
     'function sumDebtItems(items){var s=0,i;for(i=0;i<items.length;i++)s+=parseNum(items[i]&&items[i].balance);return s;}' +
     'function readState(){var useInc=document.getElementById(gid("use-income-page"));var inc=useInc&&useInc.checked?readIncomePage():parseNum(elIncome&&elIncome.value);var st={debtItems:readDebtsFromDom(),incomeMonthly:inc,useIncomePage:!!(useInc&&useInc.checked),debtPct:Math.min(100,Math.max(0,parseNum(elPct&&elPct.value))),baseline:parseNum(document.getElementById(gid("baseline"))&&document.getElementById(gid("baseline")).value),payments:readPayments()};if(CFG.targetDate){var td=document.getElementById(gid("target-date"));st.targetDate=td?String(td.value||""):"";}return st;}' +
     'function readPayments(){var out=[];if(!elLogTb)return out;elLogTb.querySelectorAll("tr").forEach(function(tr){var d=tr.getAttribute("data-date");var a=tr.getAttribute("data-amt");var n=tr.querySelector("."+P+"-log-note");var pt=tr.getAttribute("data-target");var allocRaw=tr.getAttribute("data-alloc");var allocs=[];if(allocRaw){try{allocs=JSON.parse(allocRaw)||[];}catch(e){allocs=[];}}var row={date:d,amount:String(a),note:n?String(n.textContent||""):""};if(pt)row.payTarget=pt;if(allocs.length)row.allocations=allocs;if(d&&a)out.push(row);});return out;}' +
@@ -10787,8 +10792,11 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'function recalc(){var items=readDebtsFromDom();var total=sumDebtItems(items);elTotal.textContent=fmt(total);var st=readState();var inc=st.incomeMonthly;var pct=st.debtPct;var moPay=inc*(pct/100);if(elPctDisp)elPctDisp.textContent=String(Math.round(pct));if(elIncome&&st.useIncomePage)elIncome.value=inc?String(Math.round(inc*100)/100):"0";renderProjection(total,moPay,pct,inc);var base=st.baseline;var blEl=document.getElementById(gid("baseline"));if(base<=0&&total>0){base=total;if(blEl)blEl.value=String(base);st.baseline=base;}renderProgress(total,base);if(CFG.paidOffStatus)orderedRows().forEach(function(tr){syncRowPaidOff(tr);});refreshPayTargetSelect();if(CFG.paymentCalendar)renderPaymentCalendar();save(st);}' +
     'function esc(s){return String(s==null?"":s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/"/g,"&quot;");}' +
     'function renumberPriorities(){if(!CFG.paymentPriority)return;elDebtTb.querySelectorAll("tr").forEach(function(tr,i){var sp=tr.querySelector("."+P+"-prio-num");if(sp)sp.textContent=String(i+1);tr.setAttribute("data-priority",String(i+1));});}' +
-    'function syncRowPaidOff(tr,payDate){if(!CFG.paidOffStatus||!tr)return;var inp=tr.querySelector("."+P+"-balance");var bal=inp?parseNum(inp.value):0;var badge=tr.querySelector("."+P+"-paid-badge");var dateEl=tr.querySelector("."+P+"-paid-date");if(bal<=0.009){tr.classList.add(P+"-row-paid-off");tr.setAttribute("data-paid-off","1");if(payDate&&!tr.getAttribute("data-paid-off-date"))tr.setAttribute("data-paid-off-date",payDate);if(badge)badge.hidden=false;var pd=tr.getAttribute("data-paid-off-date");if(dateEl&&pd)dateEl.textContent="Paid "+pd;if(inp){inp.readOnly=true;inp.classList.add(P+"-balance-paid");}}else{tr.classList.remove(P+"-row-paid-off");tr.removeAttribute("data-paid-off");tr.removeAttribute("data-paid-off-date");if(badge)badge.hidden=true;if(dateEl)dateEl.textContent="";if(inp){inp.readOnly=false;inp.classList.remove(P+"-balance-paid");}}}' +
-    'function makeDebtRow(it){it=it||{};var id=it.id||newRowId();var label=it.label!=null?it.label:"";var balance=String(it.balance!=null?it.balance:"0");var tr=document.createElement("tr");tr.setAttribute("data-row-id",id);if(it.paidOff){tr.setAttribute("data-paid-off","1");if(it.paidOffDate)tr.setAttribute("data-paid-off-date",String(it.paidOffDate));}var statusCell=CFG.paidOffStatus?"<td class=\\""+P+"-status-cell\\"><span class=\\""+P+"-paid-badge\\" hidden>Paid off</span><span class=\\""+P+"-paid-date\\"></span></td>":"";if(CFG.paymentPriority){tr.innerHTML="<td class=\\""+P+"-prio-cell\\"><span class=\\""+P+"-prio-num\\">1</span><div class=\\""+P+"-prio-btns\\"><button type=\\"button\\" class=\\""+P+"-prio-up\\" title=\\"Pay sooner\\">↑</button><button type=\\"button\\" class=\\""+P+"-prio-down\\" title=\\"Pay later\\">↓</button></div></td><td><input class=\\""+P+"-debt-label-inp\\" type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Category name\\" value=\\""+esc(label)+"\\"/></td><td><input class=\\""+P+"-balance\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(balance)+"\\"/></td>"+statusCell+"<td><button type=\\"button\\" class=\\""+P+"-debt-remove\\">Remove</button></td>";}else{tr.innerHTML="<td><input class=\\""+P+"-debt-label-inp\\" type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Category name\\" value=\\""+esc(label)+"\\"/></td><td><input class=\\""+P+"-balance\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(balance)+"\\"/></td>"+statusCell+"<td><button type=\\"button\\" class=\\""+P+"-debt-remove\\">Remove</button></td>";}if(CFG.paidOffStatus)syncRowPaidOff(tr);return tr;}' +
+    'function sumAllocationsForId(id){if(!id)return 0;var pays=readPayments(),sum=0;pays.forEach(function(py){(py.allocations||[]).forEach(function(a){if(a&&a.id===id)sum+=parseNum(a.amount);});});return Math.round(sum*100)/100;}' +
+    'function lastPaymentDateForId(id){if(!id)return "";var pays=readPayments(),last="";pays.forEach(function(py){(py.allocations||[]).forEach(function(a){if(a&&a.id===id&&parseNum(a.amount)>0&&py.date)last=py.date;});});return last;}' +
+    'function ensureRowTarget(tr){if(!tr)return 0;var id=tr.getAttribute("data-row-id");var applied=sumAllocationsForId(id);var inp=tr.querySelector("."+P+"-balance");var bal=inp?parseNum(inp.value):0;var tgt=parseNum(tr.getAttribute("data-target-amt"));if(tgt<=0.009){tgt=Math.round((bal+applied)*100)/100;if(tgt>0)tr.setAttribute("data-target-amt",String(tgt));}return tgt;}' +
+    'function syncRowPaidOff(tr,payDate){if(!CFG.paidOffStatus||!tr)return;var inp=tr.querySelector("."+P+"-balance");var bal=inp?parseNum(inp.value):0;var id=tr.getAttribute("data-row-id");var applied=sumAllocationsForId(id);var target=ensureRowTarget(tr);var badge=tr.querySelector("."+P+"-paid-badge");var dateEl=tr.querySelector("."+P+"-paid-date");var fullyPaid=bal<=0.009||(target>0.009&&applied>=target-0.009);if(fullyPaid){tr.classList.add(P+"-row-paid-off");tr.setAttribute("data-paid-off","1");var pd=tr.getAttribute("data-paid-off-date");if(!pd){if(payDate)pd=payDate;else pd=lastPaymentDateForId(id);if(pd)tr.setAttribute("data-paid-off-date",pd);}if(badge)badge.hidden=false;if(dateEl&&pd)dateEl.textContent="Paid "+pd+(applied>=target-0.009&&target>0?" ("+fmt(applied)+" of "+fmt(target)+")":"");if(inp){inp.readOnly=true;inp.classList.add(P+"-balance-paid");}}else{tr.classList.remove(P+"-row-paid-off");tr.removeAttribute("data-paid-off");tr.removeAttribute("data-paid-off-date");if(badge)badge.hidden=true;if(dateEl)dateEl.textContent="";if(inp){inp.readOnly=false;inp.classList.remove(P+"-balance-paid");}}}' +
+    'function makeDebtRow(it){it=it||{};var id=it.id||newRowId();var label=it.label!=null?it.label:"";var balance=String(it.balance!=null?it.balance:"0");var tr=document.createElement("tr");tr.setAttribute("data-row-id",id);if(it.target!=null&&parseNum(it.target)>0)tr.setAttribute("data-target-amt",String(it.target));if(it.paidOff){tr.setAttribute("data-paid-off","1");if(it.paidOffDate)tr.setAttribute("data-paid-off-date",String(it.paidOffDate));}var statusCell=CFG.paidOffStatus?"<td class=\\""+P+"-status-cell\\"><span class=\\""+P+"-paid-badge\\" hidden>Paid off</span><span class=\\""+P+"-paid-date\\"></span></td>":"";if(CFG.paymentPriority){tr.innerHTML="<td class=\\""+P+"-prio-cell\\"><span class=\\""+P+"-prio-num\\">1</span><div class=\\""+P+"-prio-btns\\"><button type=\\"button\\" class=\\""+P+"-prio-up\\" title=\\"Pay sooner\\">↑</button><button type=\\"button\\" class=\\""+P+"-prio-down\\" title=\\"Pay later\\">↓</button></div></td><td><input class=\\""+P+"-debt-label-inp\\" type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Category name\\" value=\\""+esc(label)+"\\"/></td><td><input class=\\""+P+"-balance\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(balance)+"\\"/></td>"+statusCell+"<td><button type=\\"button\\" class=\\""+P+"-debt-remove\\">Remove</button></td>";}else{tr.innerHTML="<td><input class=\\""+P+"-debt-label-inp\\" type=\\"text\\" autocomplete=\\"off\\" placeholder=\\"Category name\\" value=\\""+esc(label)+"\\"/></td><td><input class=\\""+P+"-balance\\" type=\\"number\\" min=\\"0\\" step=\\"0.01\\" inputmode=\\"decimal\\" value=\\""+esc(balance)+"\\"/></td>"+statusCell+"<td><button type=\\"button\\" class=\\""+P+"-debt-remove\\">Remove</button></td>";}if(CFG.paidOffStatus){ensureRowTarget(tr);syncRowPaidOff(tr);}return tr;}' +
     'function loadDebtRows(items){elDebtTb.innerHTML="";var list=items&&items.length?items.slice():DEFAULTS.slice();if(CFG.paymentPriority&&list.length){list.sort(function(a,b){return(parseNum(a.priority)||999)-(parseNum(b.priority)||999);});}for(var i=0;i<list.length;i++){elDebtTb.appendChild(makeDebtRow(list[i]));}renumberPriorities();}' +
     'function migrateDebtItems(d){if(!d)return null;if(Array.isArray(d.debtItems)&&d.debtItems.length){return d.debtItems.map(function(it,idx){var row=Object.assign({},it);if(!row.id)row.id=newRowId();if(CFG.paymentPriority&&row.priority==null)row.priority=idx+1;return row;});}if(d.debts&&!Array.isArray(d.debts)&&LEGACY_KEYS){var out=[],k;for(k=0;k<LEGACY_KEYS.length;k++){var key=LEGACY_KEYS[k];out.push({id:newRowId(),label:LEGACY_LABELS[key],balance:String(d.debts[key]!=null?d.debts[key]:"0"),priority:k+1});}return out;}return null;}' +
     'function orderedRows(){return [].slice.call(elDebtTb.querySelectorAll("tr"));}' +
@@ -10801,8 +10809,8 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'function resetLogBtn(){var btn=document.getElementById(gid("log-btn"));if(!btn)return;btn.textContent=CFG.logBtn;btn.classList.remove(P+"-log-btn-edit");}' +
     'function startEditLogRow(tr){if(!tr)return;if(_editLogTr&&_editLogTr!==tr)_editLogTr.classList.remove(P+"-log-editing");_editLogTr=tr;tr.classList.add(P+"-log-editing");var dateInp=document.getElementById(gid("log-date"));var amtInp=document.getElementById(gid("log-amt"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));if(dateInp)dateInp.value=tr.getAttribute("data-date")||"";if(amtInp)amtInp.value=tr.getAttribute("data-amt")||"";if(noteInp){var noteCell=tr.querySelector("."+P+"-log-note");noteInp.value=noteCell?String(noteCell.textContent||""):"";}if(targetSel)targetSel.value=tr.getAttribute("data-target")||"";var btn=document.getElementById(gid("log-btn"));if(btn){btn.textContent=CFG.logUpdateBtn;btn.classList.add(P+"-log-btn-edit");}try{amtInp&&amtInp.focus();}catch(e){}}' +
     'function addLogRow(row,prepend){var tr=document.createElement("tr");tr.setAttribute("data-date",row.date);tr.setAttribute("data-amt",row.amount);if(row.payTarget)tr.setAttribute("data-target",row.payTarget);if(row.allocations&&row.allocations.length)tr.setAttribute("data-alloc",JSON.stringify(row.allocations));tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+fmt(parseNum(row.amount))+"</td><td class=\\""+P+"-log-alloc\\">"+esc(formatAlloc(row.allocations))+"</td><td class=\\""+P+"-log-note\\">"+esc(row.note||"")+"</td><td class=\\""+P+"-log-actions\\"><button type=\\"button\\" class=\\""+P+"-log-edit\\" title=\\"Edit payment\\" aria-label=\\"Edit payment\\">Edit</button><button type=\\"button\\" class=\\""+P+"-log-del\\" title=\\"Remove\\" aria-label=\\"Remove payment\\">×</button></td>";if(prepend&&elLogTb.firstChild)elLogTb.insertBefore(tr,elLogTb.firstChild);else elLogTb.appendChild(tr);}' +
-    'function loadState(d){if(!d){loadDebtRows(null);recalc();return;}var items=migrateDebtItems(d);loadDebtRows(items);if(elIncome&&d.incomeMonthly!=null&&!d.useIncomePage)elIncome.value=String(d.incomeMonthly);var useEl=document.getElementById(gid("use-income-page"));if(useEl)useEl.checked=!!d.useIncomePage;if(elPct&&d.debtPct!=null)elPct.value=String(d.debtPct);var bl=document.getElementById(gid("baseline"));if(bl&&d.baseline!=null)bl.value=String(d.baseline);if(CFG.targetDate){var td=document.getElementById(gid("target-date"));if(td&&d.targetDate!=null)td.value=String(d.targetDate);}if(elLogTb){elLogTb.innerHTML="";var pays=d.payments||[];for(var i=pays.length-1;i>=0;i--)addLogRow(pays[i],false);}recalc();}' +
-    'elDebtTb.addEventListener("input",function(ev){var t=ev.target;if(t&&(t.classList.contains(P+"-debt-label-inp")||t.classList.contains(P+"-balance")))recalc();});' +
+    'function loadState(d){if(!d){loadDebtRows(null);recalc();return;}var items=migrateDebtItems(d);loadDebtRows(items);if(elIncome&&d.incomeMonthly!=null&&!d.useIncomePage)elIncome.value=String(d.incomeMonthly);var useEl=document.getElementById(gid("use-income-page"));if(useEl)useEl.checked=!!d.useIncomePage;if(elPct&&d.debtPct!=null)elPct.value=String(d.debtPct);var bl=document.getElementById(gid("baseline"));if(bl&&d.baseline!=null)bl.value=String(d.baseline);if(CFG.targetDate){var td=document.getElementById(gid("target-date"));if(td&&d.targetDate!=null)td.value=String(d.targetDate);}if(elLogTb){elLogTb.innerHTML="";var pays=d.payments||[];for(var i=pays.length-1;i>=0;i--)addLogRow(pays[i],false);}if(CFG.paidOffStatus)orderedRows().forEach(function(tr){ensureRowTarget(tr);syncRowPaidOff(tr);});recalc();}' +
+    'elDebtTb.addEventListener("input",function(ev){var t=ev.target;if(t&&t.classList.contains(P+"-balance")&&CFG.paidOffStatus){var tr=t.closest("tr");if(tr){var id=tr.getAttribute("data-row-id");var applied=sumAllocationsForId(id);var bal=parseNum(t.value);tr.setAttribute("data-target-amt",String(Math.round((bal+applied)*100)/100));syncRowPaidOff(tr);}}if(t&&(t.classList.contains(P+"-debt-label-inp")||t.classList.contains(P+"-balance")))recalc();});' +
     'elDebtTb.addEventListener("change",function(ev){var t=ev.target;if(t&&t.classList.contains(P+"-balance"))recalc();});' +
     'elDebtTb.addEventListener("click",function(ev){var t=ev.target;if(!t)return;var tr=t.closest("tr");if(!tr||tr.parentNode!==elDebtTb)return;if(t.classList.contains(P+"-debt-remove")){if(elDebtTb.querySelectorAll("tr").length<=1){alert(CFG.keepOneRowAlert);return;}tr.remove();renumberPriorities();recalc();return;}if(CFG.paymentPriority&&t.classList.contains(P+"-prio-up")){var prev=tr.previousElementSibling;if(prev){elDebtTb.insertBefore(tr,prev);renumberPriorities();save();}return;}if(CFG.paymentPriority&&t.classList.contains(P+"-prio-down")){var next=tr.nextElementSibling;if(next){elDebtTb.insertBefore(next,tr);renumberPriorities();save();}return;}});' +
     'document.getElementById(gid("add-debt")).addEventListener("click",function(){elDebtTb.appendChild(makeDebtRow({}));renumberPriorities();var rows=elDebtTb.querySelectorAll("tr");if(rows.length){var last=rows[rows.length-1];var lab=last.querySelector("."+P+"-debt-label-inp");if(lab){try{lab.focus();}catch(e){}}recalc();}});' +
@@ -10812,7 +10820,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'if(useIncEl)useIncEl.addEventListener("change",recalc);' +
     'var targetEl=document.getElementById(gid("target-date"));if(targetEl){targetEl.addEventListener("change",recalc);targetEl.addEventListener("input",recalc);}' +
     'document.getElementById(gid("pull-income")).addEventListener("click",function(){wsGet(SKI,function(e,d){_incomePage=d;var u=document.getElementById(gid("use-income-page"));if(u)u.checked=true;recalc();});});' +
-    'document.getElementById(gid("log-btn")).addEventListener("click",function(){var amtInp=document.getElementById(gid("log-amt"));var dateInp=document.getElementById(gid("log-date"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));var amt=parseNum(amtInp&&amtInp.value);if(amt<=0){alert(CFG.logAlert);return;}var dt=dateInp&&dateInp.value?dateInp.value:new Date().toISOString().slice(0,10);var note=noteInp?String(noteInp.value||""):"";var targetId=targetSel?String(targetSel.value||""):"";if(_editLogTr){reverseAllocations(parseAllocsFromTr(_editLogTr));_editLogTr.remove();_editLogTr=null;resetLogBtn();}var allocs=applyPayment(amt,targetId);if(CFG.paidOffStatus){orderedRows().forEach(function(tr){var inp=tr.querySelector("."+P+"-balance");if(inp&&parseNum(inp.value)<=0.009)syncRowPaidOff(tr,dt);});}addLogRow({date:dt,amount:String(amt),note:note,payTarget:targetId,allocations:allocs},true);if(amtInp)amtInp.value="";if(noteInp)noteInp.value="";if(targetSel)targetSel.value="";recalc();});' +
+    'document.getElementById(gid("log-btn")).addEventListener("click",function(){var amtInp=document.getElementById(gid("log-amt"));var dateInp=document.getElementById(gid("log-date"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));var amt=parseNum(amtInp&&amtInp.value);if(amt<=0){alert(CFG.logAlert);return;}var dt=dateInp&&dateInp.value?dateInp.value:new Date().toISOString().slice(0,10);var note=noteInp?String(noteInp.value||""):"";var targetId=targetSel?String(targetSel.value||""):"";if(_editLogTr){reverseAllocations(parseAllocsFromTr(_editLogTr));_editLogTr.remove();_editLogTr=null;resetLogBtn();}var allocs=applyPayment(amt,targetId);if(CFG.paidOffStatus)orderedRows().forEach(function(tr){syncRowPaidOff(tr,dt);});}addLogRow({date:dt,amount:String(amt),note:note,payTarget:targetId,allocations:allocs},true);if(amtInp)amtInp.value="";if(noteInp)noteInp.value="";if(targetSel)targetSel.value="";recalc();});' +
     'if(elLogTb)elLogTb.addEventListener("click",function(ev){var editBtn=ev.target.closest&&ev.target.closest("."+P+"-log-edit");if(editBtn){var trE=editBtn.closest("tr");if(trE&&trE.parentNode===elLogTb)startEditLogRow(trE);return;}var b=ev.target.closest&&ev.target.closest("."+P+"-log-del");if(!b)return;var tr=b.closest("tr");if(tr&&tr.parentNode===elLogTb){if(_editLogTr===tr){_editLogTr=null;resetLogBtn();}reverseAllocations(parseAllocsFromTr(tr));tr.remove();recalc();}});' +
     'document.getElementById(gid("lock-baseline")).addEventListener("click",function(){var t=sumDebtItems(readDebtsFromDom());var bl=document.getElementById(gid("baseline"));if(bl)bl.value=String(t);recalc();});' +
     'document.getElementById(gid("reset")).addEventListener("click",function(){if(!confirm(CFG.resetConfirm))return;wsPut(SK,null);location.reload();});' +
@@ -11154,11 +11162,96 @@ function buildCostPlannerWorkspaceHtml(cfg) {
   );
 }
 
+function buildMoneyDashboardHtml() {
+  const keysJson = JSON.stringify({
+    income: INCOME_STORAGE_KEY,
+    expenses: MONTHLY_EXPENSES_STORAGE_KEY,
+    debt: DEBT_TRACKER_STORAGE_KEY,
+    marriage: MARRIAGE_COST_STORAGE_KEY,
+    saving: SAVING_STORAGE_KEY,
+    tickets: TICKETS_STORAGE_KEY
+  });
+  const script =
+    '<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"><' +
+    '/script><script>' +
+    '(function(){' +
+    WORKSPACE_STORE_API_JS +
+    'var KEYS=' +
+    keysJson +
+    ';' +
+    'var charts=[];' +
+    'function fmt(n){return new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(n||0);}' +
+    'function pn(v){var x=parseFloat(String(v).replace(/,/g,""));return isFinite(x)?x:0;}' +
+    'function toMo(a,f){var v=pn(a);if(f==="biweekly")return v*26/12;if(f==="weekly")return v*52/12;if(f==="annual")return v/12;return v;}' +
+    'function sumIncome(d){if(!d||!d.sources)return 0;var s=0;d.sources.forEach(function(src){(src.lines||[]).forEach(function(L){s+=toMo(L.amount,L.frequency||"monthly");});});return s;}' +
+    'function sumExpenses(rows){if(!Array.isArray(rows))return 0;var s=0;rows.forEach(function(r){s+=pn(r&&r.amount);});return s;}' +
+    'function plannerSum(payload){var items=(payload&&payload.debtItems)||[];var total=0,paid=0,base=pn(payload&&payload.baseline);items.forEach(function(it){total+=pn(it.balance);});if(base<=0)base=total+paidFromLog(payload);paid=Math.max(0,base-total);return{total:total,baseline:base,paid:paid,items:items,payments:(payload&&payload.payments)||[],pct:pn(payload&&payload.debtPct),targetDate:payload&&payload.targetDate};}' +
+    'function paidFromLog(payload){var s=0;(payload&&payload.payments||[]).forEach(function(py){s+=pn(py.amount);});return s;}' +
+    'function allocTotals(payload){var m={};(payload&&payload.payments||[]).forEach(function(py){(py.allocations||[]).forEach(function(a){if(!a||!a.id)return;var k=a.label||a.id;m[k]=(m[k]||0)+pn(a.amount);});});return m;}' +
+    'function setKpi(id,val,sub){var el=document.getElementById(id);if(el)el.textContent=val;var s=document.getElementById(id+"-sub");if(s&&sub!=null)s.textContent=sub;}' +
+    'function destroyCharts(){charts.forEach(function(c){try{c.destroy();}catch(e){}});charts=[];}' +
+    'function mkChart(id,cfg){var el=document.getElementById(id);if(!el||typeof Chart==="undefined")return;charts.push(new Chart(el,cfg));}' +
+    'function renderAll(D){destroyCharts();var inc=sumIncome(D.income);var exp=sumExpenses(D.expenses);var cf=inc-exp;var debt=plannerSum(D.debt);var wed=plannerSum(D.marriage);setKpi("dash-kpi-income",fmt(inc),"Monthly from Income page");setKpi("dash-kpi-expenses",fmt(exp),"Monthly from Expenses");setKpi("dash-kpi-cashflow",fmt(cf),cf>=0?"Surplus":"Shortfall");setKpi("dash-kpi-debt",fmt(debt.total),debt.paid>0?fmt(debt.paid)+" paid off":"");setKpi("dash-kpi-wedding",fmt(wed.total),wed.targetDate?"Target "+wed.targetDate:"");var debtPaid=Math.max(0,debt.baseline-debt.total);var wedPaid=Math.max(0,wed.baseline-wed.total);mkChart("dash-chart-cashflow",{type:"bar",data:{labels:["Income","Expenses","Net"],datasets:[{label:"CAD/mo",data:[inc,exp,cf],backgroundColor:["#15803d","#dc2626",cf>=0?"#2563eb":"#f59e0b"]}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return "$"+v;}}}}}}});mkChart("dash-chart-debt",{type:"doughnut",data:{labels:["Paid","Remaining"],datasets:[{data:[debtPaid,debt.total],backgroundColor:["#15803d","#fecaca"]}]},options:{plugins:{legend:{position:"bottom"}}}});mkChart("dash-chart-wedding",{type:"doughnut",data:{labels:["Funded","Remaining"],datasets:[{data:[wedPaid,wed.total],backgroundColor:["#be185d","#fbcfe8"]}]},options:{plugins:{legend:{position:"bottom"}}}});var months={};function addPay(py,tag){var d=py.date;if(!d)return;var mk=d.slice(0,7);months[mk]=(months[mk]||0)+pn(py.amount);}(debt.payments||[]).forEach(function(p){addPay(p,"debt");});(wed.payments||[]).forEach(function(p){addPay(p,"wed");});var ml=Object.keys(months).sort();mkChart("dash-chart-payments",{type:"line",data:{labels:ml,datasets:[{label:"Payments logged",data:ml.map(function(k){return months[k];}),borderColor:"#7c3aed",backgroundColor:"rgba(124,58,237,0.15)",fill:true,tension:0.3}]},options:{plugins:{legend:{display:false}},scales:{y:{ticks:{callback:function(v){return "$"+v;}}}}}}});var debtAlloc=allocTotals(D.debt);var debtLabels=Object.keys(debtAlloc);if(!debtLabels.length&&debt.items.length){debt.items.forEach(function(it){debtLabels.push(it.label||"Item");debtAlloc[it.label||"Item"]=0;});}mkChart("dash-chart-debt-cat",{type:"bar",data:{labels:debtLabels.slice(0,8),datasets:[{label:"Applied (log)",data:debtLabels.slice(0,8).map(function(k){return debtAlloc[k]||0;}),backgroundColor:"#fca5a5"}]},options:{indexAxis:"y",plugins:{legend:{display:false}}}});var wedAlloc=allocTotals(D.marriage);var wedLabels=Object.keys(wedAlloc);if(!wedLabels.length&&wed.items.length){wed.items.forEach(function(it){wedLabels.push(it.label||"Item");wedAlloc[it.label||"Item"]=0;});}mkChart("dash-chart-wed-cat",{type:"bar",data:{labels:wedLabels.slice(0,8),datasets:[{label:"Applied (log)",data:wedLabels.slice(0,8).map(function(k){return wedAlloc[k]||0;}),backgroundColor:"#f9a8d4"}]},options:{indexAxis:"y",plugins:{legend:{display:false}}}});var recent=[];(debt.payments||[]).forEach(function(p){recent.push({date:p.date,amt:pn(p.amount),type:"Debt",alloc:p.allocations,note:p.note});});(wed.payments||[]).forEach(function(p){recent.push({date:p.date,amt:pn(p.amount),type:"Wedding",alloc:p.allocations,note:p.note});});recent.sort(function(a,b){return String(b.date).localeCompare(String(a.date));});var tb=document.getElementById("dash-recent-tbody");if(tb){tb.innerHTML="";recent.slice(0,20).forEach(function(r){var tr=document.createElement("tr");var allocTxt="—";if(r.alloc&&r.alloc.length)allocTxt=r.alloc.map(function(a){return (a.label||"?")+" "+fmt(a.amount);}).join(", ");tr.innerHTML="<td>"+r.date+"</td><td>"+r.type+"</td><td>"+fmt(r.amt)+"</td><td>"+allocTxt.replace(/</g,"&lt;")+"</td><td>"+String(r.note||"").replace(/</g,"&lt;")+"</td>";tb.appendChild(tr);});if(!recent.length)tb.innerHTML="<tr><td colspan=5>No payments logged yet.</td></tr>";}}' +
+    'function loadAll(){var out={};var left=6;function done(){left--;if(left<=0)renderAll(out);}["income","expenses","debt","marriage","saving","tickets"].forEach(function(k){wsGet(KEYS[k],function(e,d){out[k]=d;done();});});}' +
+    'loadAll();' +
+    '})();<' +
+    '/script>';
+  return (
+    '<div class="analytics-toolbar">' +
+    '<div><h1>Money dashboard</h1>' +
+    '<p class="sub">Charts and totals across income, expenses, debt, and wedding savings.</p></div>' +
+    '<div class="analytics-toolbar-actions">' +
+    '<a class="link-pill" href="/">Home</a>' +
+    '<a class="link-pill" href="/debt-tracker">Debt tracker</a>' +
+    '<a class="link-pill" href="/marriage-cost">Marriage cost</a>' +
+    '</div></div>' +
+    '<div class="analytics-body">' +
+    '<style>' +
+    '.dash-panel{border:1px solid #e5e7eb;border-radius:12px;padding:20px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,0.06)}' +
+    '.dash-kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));margin-bottom:20px}' +
+    '.dash-kpi{border:1px solid #e5e7eb;border-radius:10px;padding:14px;background:#fafafa}' +
+    '.dash-kpi-lab{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#64748b;margin:0 0 6px}' +
+    '.dash-kpi-val{font-size:1.35rem;font-weight:800;color:#0f172a;margin:0;font-variant-numeric:tabular-nums}' +
+    '.dash-kpi-sub{font-size:12px;color:#64748b;margin:6px 0 0}' +
+    '.dash-grid{display:grid;gap:18px}@media(min-width:960px){.dash-grid{grid-template-columns:1fr 1fr}}' +
+    '.dash-card{border:1px solid #e5e7eb;border-radius:12px;padding:16px;background:#fff}' +
+    '.dash-card h2{margin:0 0 12px;font-size:14px;font-weight:800;color:#0f172a}' +
+    '.dash-card canvas{max-height:240px}' +
+    '.dash-wide{grid-column:1/-1}' +
+    '.dash-table{width:100%;border-collapse:collapse;font-size:13px}' +
+    '.dash-table th{text-align:left;padding:8px 10px;background:#f8fafc;border-bottom:1px solid #e5e7eb}' +
+    '.dash-table td{padding:8px 10px;border-bottom:1px solid #f1f5f9}' +
+    '</style>' +
+    '<div class="dash-panel">' +
+    '<div class="dash-kpis">' +
+    '<div class="dash-kpi"><p class="dash-kpi-lab">Income</p><p id="dash-kpi-income" class="dash-kpi-val">—</p><p id="dash-kpi-income-sub" class="dash-kpi-sub"></p></div>' +
+    '<div class="dash-kpi"><p class="dash-kpi-lab">Expenses</p><p id="dash-kpi-expenses" class="dash-kpi-val">—</p><p id="dash-kpi-expenses-sub" class="dash-kpi-sub"></p></div>' +
+    '<div class="dash-kpi"><p class="dash-kpi-lab">Cashflow</p><p id="dash-kpi-cashflow" class="dash-kpi-val">—</p><p id="dash-kpi-cashflow-sub" class="dash-kpi-sub"></p></div>' +
+    '<div class="dash-kpi"><p class="dash-kpi-lab">Debt left</p><p id="dash-kpi-debt" class="dash-kpi-val">—</p><p id="dash-kpi-debt-sub" class="dash-kpi-sub"></p></div>' +
+    '<div class="dash-kpi"><p class="dash-kpi-lab">Wedding left</p><p id="dash-kpi-wedding" class="dash-kpi-val">—</p><p id="dash-kpi-wedding-sub" class="dash-kpi-sub"></p></div>' +
+    '</div>' +
+    '<div class="dash-grid">' +
+    '<div class="dash-card dash-wide"><h2>Income vs expenses (monthly)</h2><canvas id="dash-chart-cashflow"></canvas></div>' +
+    '<div class="dash-card"><h2>Debt progress</h2><canvas id="dash-chart-debt"></canvas></div>' +
+    '<div class="dash-card"><h2>Wedding fund progress</h2><canvas id="dash-chart-wedding"></canvas></div>' +
+    '<div class="dash-card dash-wide"><h2>Payments over time (debt + wedding)</h2><canvas id="dash-chart-payments"></canvas></div>' +
+    '<div class="dash-card"><h2>Debt — applied by category</h2><canvas id="dash-chart-debt-cat"></canvas></div>' +
+    '<div class="dash-card"><h2>Wedding — applied by category</h2><canvas id="dash-chart-wed-cat"></canvas></div>' +
+    '<div class="dash-card dash-wide"><h2>Recent payments</h2>' +
+    '<table class="dash-table"><thead><tr><th>Date</th><th>Type</th><th>Amount</th><th>Applied to</th><th>Note</th></tr></thead>' +
+    '<tbody id="dash-recent-tbody"><tr><td colspan="5">Loading…</td></tr></tbody></table></div>' +
+    '</div></div>' +
+    script +
+    '</div>'
+  );
+}
+
 function buildDebtTrackerWorkspaceHtml() {
   return buildCostPlannerWorkspaceHtml({
     idPrefix: 'dt',
     storageKey: DEBT_TRACKER_STORAGE_KEY,
     addBtnColor: 'red',
+    paidOffStatus: true,
     pageTitle: 'Debt tracker',
     pageSub:
       'School debt, credit cards, tickets, and insurance—set income, assign a % to debt, and see when you could be debt-free.',
@@ -11324,6 +11417,10 @@ app.get('/', (req, res) => {
     <h2 id="sb-money-heading" class="sb-time-heading">Money</h2>
     <p class="sb-time-lead">Plan and log what you earn, spend, owe, and save toward.</p>
     <nav class="sb-grid" aria-label="Money tools">
+    <a class="sb-card" href="/dashboard">
+      <h2>Dashboard</h2>
+      <span>Charts for income, expenses, debt progress, wedding savings, and recent payments.</span>
+    </a>
     <a class="sb-card" href="/monthly-expenses">
       <h2>Monthly expenses</h2>
       <span>Edit line items in CAD and see your monthly total update at the top.</span>
@@ -11357,6 +11454,11 @@ app.get('/', (req, res) => {
     )
   );
 });
+app.get('/dashboard', (req, res) => {
+  const canvas = buildMoneyDashboardHtml();
+  res.type('html').send(renderSecondBrainWorkspace('Dashboard — Third brain', '/dashboard', canvas));
+});
+
 app.get('/monthly-expenses', (req, res) => {
   const canvas = buildMonthlyExpensesWorkspaceHtml();
   res.type('html').send(renderSecondBrainWorkspace('Monthly expenses — Third brain', '/monthly-expenses', canvas));
