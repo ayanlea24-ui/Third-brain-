@@ -10530,10 +10530,11 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '<style>' +
     '.' + p + '-panel{border:1px solid #e5e7eb;border-radius:12px;padding:20px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,0.06)}' +
     '.' + p + '-hint{margin:0 0 16px;font-size:13px;color:#64748b;line-height:1.5;max-width:56em;}' +
-    '.' + p + '-grid{display:flex;flex-direction:column;gap:18px;}' +
+    '.' + p + '-grid{display:grid;gap:18px;grid-template-columns:1fr;align-items:start;}' +
+    '@media(min-width:900px){.' + p + '-grid{grid-template-columns:minmax(0,3fr) minmax(220px,1fr);}}' +
     '.' + p + '-block{border:1px solid #e5e7eb;border-radius:12px;padding:16px 18px;background:#fafafa;min-width:0;}' +
     '.' + p + '-block-owe{padding:16px 18px 18px;}' +
-    '.' + p + '-block-income{max-width:36rem;}' +
+    '.' + p + '-block-income{min-width:0;}' +
     '.' + p + '-block h2{margin:0 0 12px;font-size:15px;font-weight:800;color:#0f172a;letter-spacing:-0.02em;}' +
     totalCardStyle +
     '.' + p + '-total-val{font-size:1.85rem;font-weight:800;color:#0f172a;margin:0;font-variant-numeric:tabular-nums;}' +
@@ -10565,9 +10566,11 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     addBtnStyle +
     '.' + p + '-income-row{display:grid;grid-template-columns:1fr;gap:14px;margin-bottom:12px;}' +
     '@media(min-width:540px){.' + p + '-income-row{grid-template-columns:minmax(10rem,14rem) 1fr;align-items:end;}}' +
+    '@media(min-width:900px){.' + p + '-block-income .' + p + '-income-row{grid-template-columns:1fr;}}' +
     '.' + p + '-income-row label{font-size:13px;font-weight:600;color:#334155;display:flex;flex-direction:column;gap:6px;}' +
     '.' + p + '-income-row input[type=number],.' + p + '-income-row select{padding:8px 10px;border:1px solid #e2e8f0;border-radius:8px;font:inherit;width:100%;box-sizing:border-box;}' +
     '.' + p + '-income-extras{display:flex;flex-wrap:wrap;gap:10px 14px;align-items:center;}' +
+    '@media(min-width:900px){.' + p + '-block-income .' + p + '-income-extras{flex-direction:column;align-items:flex-start;}}' +
     '.' + p + '-income-extras label{flex-direction:row;align-items:center;gap:8px;font-size:13px;font-weight:600;color:#334155;white-space:nowrap;}' +
     '.' + p + '-income-extras label input{width:auto;margin:0;}' +
     '#'+p+'-pull-income{border:1px solid #e5e7eb;background:#fff;color:#111827;border-radius:8px;padding:8px 14px;font-weight:700;font-size:13px;cursor:pointer;font:inherit;white-space:nowrap;}' +
@@ -10576,6 +10579,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '.' + p + '-pct-wrap label{display:block;font-size:13px;font-weight:600;color:#334155;margin:0 0 8px;}' +
     '.' + p + '-pct-row{display:grid;grid-template-columns:1fr auto auto;gap:10px 14px;align-items:center;}' +
     '@media(max-width:520px){.' + p + '-pct-row{grid-template-columns:1fr;}}' +
+    '@media(min-width:900px){.' + p + '-block-income .' + p + '-pct-row{grid-template-columns:1fr;}}' +
     '.' + p + '-pct-row input[type=range]{width:100%;min-width:0;max-width:none;margin:0;}' +
     '.' + p + '-pct-num-wrap{display:flex;align-items:center;gap:2px;font-weight:700;color:#334155;}' +
     '.' + p + '-pct-num{width:3rem;text-align:center;font-weight:700;border:1px solid #e2e8f0;border-radius:8px;padding:6px 4px;background:#fff;}' +
