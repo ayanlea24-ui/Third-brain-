@@ -10626,6 +10626,8 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     '.' + p + '-log-table td:nth-child(2){text-align:right;font-variant-numeric:tabular-nums;font-weight:600;}' +
     '.' + p + '-log-del{border:none;background:transparent;color:#94a3b8;cursor:pointer;font-size:16px;padding:2px 6px;line-height:1;}' +
     '.' + p + '-log-del:hover{color:#b91c1c;}' +
+    '.' + p + '-log-delete{white-space:nowrap;border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit;}' +
+    '.' + p + '-log-delete:hover{background:#fef2f2;border-color:#f87171;color:#991b1b;}' +
     '.' + p + '-log-edit{border:1px solid #e5e7eb;background:#fff;color:#475569;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit;}' +
     '.' + p + '-log-edit:hover{background:#f8fafc;border-color:#cbd5e1;color:#0f172a;}' +
     '.' + p + '-log-actions{white-space:nowrap;text-align:right;}' +
@@ -10793,10 +10795,30 @@ function buildCostPlannerWorkspaceHtml(cfg) {
         '-cal-detail{margin-top:14px;padding:12px 14px;border:1px solid #fbcfe8;border-radius:10px;background:#fdf2f8;font-size:13px;color:#831843;line-height:1.5;}' +
         '.' +
         p +
-        '-cal-detail ul{margin:8px 0 0;padding-left:1.2rem;}' +
+        '-cal-detail ul{margin:8px 0 0;padding-left:0;}' +
         '.' +
         p +
-        '-cal-detail li{margin:4px 0;}' +
+        '-cal-pay-item{display:flex;flex-wrap:wrap;align-items:center;gap:8px;list-style:none;margin:8px 0;padding:0;}' +
+        '.' +
+        p +
+        '-cal-pay-amt{font-weight:700;}' +
+        '.' +
+        p +
+        '-cal-pay-actions{margin-left:auto;display:flex;gap:6px;}' +
+        '.' +
+        p +
+        '-cal-log-edit,.' +
+        p +
+        '-cal-log-delete{border:1px solid #e5e7eb;background:#fff;color:#475569;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit;}' +
+        '.' +
+        p +
+        '-cal-log-delete{border-color:#fecaca;color:#b91c1c;}' +
+        '.' +
+        p +
+        '-cal-log-delete:hover{background:#fef2f2;border-color:#f87171;color:#991b1b;}' +
+        '.' +
+        p +
+        '-cal-log-edit:hover{background:#f8fafc;border-color:#cbd5e1;color:#0f172a;}' +
         ''
       : '') +
     '.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0;}' +
@@ -10826,7 +10848,8 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     paidLabel: cfg.paidLabel,
     moPaySuffix: cfg.moPaySuffix,
     logBtn: cfg.logBtn,
-    logUpdateBtn: cfg.logUpdateBtn || 'Update payment'
+    logUpdateBtn: cfg.logUpdateBtn || 'Update payment',
+    logDeleteConfirm: cfg.logDeleteConfirm || 'Delete this payment?',
   };
   const script =
     '<script>' +
@@ -10905,8 +10928,10 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'function reverseAllocations(allocs){if(!allocs||!allocs.length)return;allocs.forEach(function(a){if(!a||!a.id)return;var rows=orderedRows();for(var i=0;i<rows.length;i++){if(rows[i].getAttribute("data-row-id")===a.id){var inp=rows[i].querySelector("."+P+"-balance");if(inp)inp.value=String(Math.round((parseNum(inp.value)+parseNum(a.amount))*100)/100);if(CFG.paidOffStatus){syncRowPaySummary(rows[i]);syncRowPaidOff(rows[i]);}break;}}});}' +
     'var _editLogTr=null;' +
     'function resetLogBtn(){var btn=document.getElementById(gid("log-btn"));if(!btn)return;btn.textContent=CFG.logBtn;btn.classList.remove(P+"-log-btn-edit");}' +
+    'function findLogRowForPayment(py){if(!elLogTb||!py||!py.date)return null;var best=null;elLogTb.querySelectorAll("tr").forEach(function(tr){if(tr.getAttribute("data-date")!==py.date)return;if(String(tr.getAttribute("data-amt"))!==String(py.amount))return;var noteCell=tr.querySelector("."+P+"-log-note");var note=noteCell?String(noteCell.textContent||""):"";if(String(py.note||"")===note){best=tr;return;}if(!best)best=tr;});return best;}' +
+    'function deleteLogRow(tr){if(!tr||tr.parentNode!==elLogTb)return;var amt=tr.getAttribute("data-amt");var dt=tr.getAttribute("data-date");var msg=CFG.logDeleteConfirm;if(dt&&amt)msg="Delete payment of "+fmt(parseNum(amt))+" on "+dt+"?";if(!confirm(msg))return;if(_editLogTr===tr){_editLogTr=null;resetLogBtn();}reverseAllocations(parseAllocsFromTr(tr));tr.remove();recalc();}' +
     'function startEditLogRow(tr){if(!tr)return;if(_editLogTr&&_editLogTr!==tr)_editLogTr.classList.remove(P+"-log-editing");_editLogTr=tr;tr.classList.add(P+"-log-editing");var dateInp=document.getElementById(gid("log-date"));var amtInp=document.getElementById(gid("log-amt"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));if(dateInp)dateInp.value=tr.getAttribute("data-date")||"";if(amtInp)amtInp.value=tr.getAttribute("data-amt")||"";if(noteInp){var noteCell=tr.querySelector("."+P+"-log-note");noteInp.value=noteCell?String(noteCell.textContent||""):"";}if(targetSel)targetSel.value=tr.getAttribute("data-target")||"";var btn=document.getElementById(gid("log-btn"));if(btn){btn.textContent=CFG.logUpdateBtn;btn.classList.add(P+"-log-btn-edit");}try{amtInp&&amtInp.focus();}catch(e){}}' +
-    'function addLogRow(row,prepend){var tr=document.createElement("tr");tr.setAttribute("data-date",row.date);tr.setAttribute("data-amt",row.amount);if(row.payTarget)tr.setAttribute("data-target",row.payTarget);if(row.allocations&&row.allocations.length)tr.setAttribute("data-alloc",JSON.stringify(row.allocations));tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+fmt(parseNum(row.amount))+"</td><td class=\\""+P+"-log-alloc\\">"+esc(formatAlloc(row.allocations))+"</td><td class=\\""+P+"-log-note\\">"+esc(row.note||"")+"</td><td class=\\""+P+"-log-actions\\"><button type=\\"button\\" class=\\""+P+"-log-edit\\" title=\\"Edit payment\\" aria-label=\\"Edit payment\\">Edit</button><button type=\\"button\\" class=\\""+P+"-log-del\\" title=\\"Remove\\" aria-label=\\"Remove payment\\">×</button></td>";if(prepend&&elLogTb.firstChild)elLogTb.insertBefore(tr,elLogTb.firstChild);else elLogTb.appendChild(tr);}' +
+    'function addLogRow(row,prepend){var tr=document.createElement("tr");tr.setAttribute("data-date",row.date);tr.setAttribute("data-amt",row.amount);if(row.payTarget)tr.setAttribute("data-target",row.payTarget);if(row.allocations&&row.allocations.length)tr.setAttribute("data-alloc",JSON.stringify(row.allocations));tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+fmt(parseNum(row.amount))+"</td><td class=\\""+P+"-log-alloc\\">"+esc(formatAlloc(row.allocations))+"</td><td class=\\""+P+"-log-note\\">"+esc(row.note||"")+"</td><td class=\\""+P+"-log-actions\\"><button type=\\"button\\" class=\\""+P+"-log-edit\\" title=\\"Edit payment\\" aria-label=\\"Edit payment\\">Edit</button><button type=\\"button\\" class=\\""+P+"-log-delete\\" title=\\"Delete payment\\" aria-label=\\"Delete payment\\">Delete</button></td>";if(prepend&&elLogTb.firstChild)elLogTb.insertBefore(tr,elLogTb.firstChild);else elLogTb.appendChild(tr);}' +
     'function loadState(d){if(anyRowEditing())return;if(!d){loadDebtRows(null);recalc();return;}var items=migrateDebtItems(d);if((!items||!items.length)&&Array.isArray(d.debtItems)&&d.debtItems.length===0)items=null;loadDebtRows(items);if(elIncome&&d.incomeMonthly!=null&&!d.useIncomePage)elIncome.value=String(d.incomeMonthly);var useEl=document.getElementById(gid("use-income-page"));if(useEl)useEl.checked=!!d.useIncomePage;if(elPct&&d.debtPct!=null)elPct.value=String(d.debtPct);var bl=document.getElementById(gid("baseline"));if(bl&&d.baseline!=null)bl.value=String(d.baseline);if(CFG.targetDate){var td=document.getElementById(gid("target-date"));if(td&&d.targetDate!=null)td.value=String(d.targetDate);}if(elLogTb){elLogTb.innerHTML="";var pays=d.payments||[];for(var i=pays.length-1;i>=0;i--)addLogRow(pays[i],false);}replayPaymentAllocations();if(CFG.paidOffStatus)orderedRows().forEach(function(tr){ensureRowTarget(tr);syncRowPaidOff(tr);});recalc();}' +
     'var _origDebTimer=null;' +
     'elDebtTb.addEventListener("input",function(ev){var t=ev.target;if(!t)return;var tr=t.closest("tr");if(t.classList.contains(P+"-orig-inp")&&tr){tr.setAttribute("data-target-amt",String(parseNum(t.value)));syncRemainingDisplay(tr);restoreInputFocus(t);if(_origDebTimer)clearTimeout(_origDebTimer);_origDebTimer=setTimeout(function(){var total=sumDebtItems(readDebtsFromDom());elTotal.textContent=fmt(total);save(readState());},500);return;}if(t.classList.contains(P+"-debt-label-inp"))recalc();});' +
@@ -10921,7 +10946,7 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'var targetEl=document.getElementById(gid("target-date"));if(targetEl){targetEl.addEventListener("change",recalc);targetEl.addEventListener("input",recalc);}' +
     'bindClick("pull-income",function(){wsGet(SKI,function(e,d){_incomePage=d;var u=document.getElementById(gid("use-income-page"));if(u)u.checked=true;recalc();});});' +
     'bindClick("log-btn",function(){var amtInp=document.getElementById(gid("log-amt"));var dateInp=document.getElementById(gid("log-date"));var noteInp=document.getElementById(gid("log-note"));var targetSel=document.getElementById(gid("log-target"));var amt=parseNum(amtInp&&amtInp.value);if(amt<=0){alert(CFG.logAlert);return;}var dt=dateInp&&dateInp.value?dateInp.value:new Date().toISOString().slice(0,10);var note=noteInp?String(noteInp.value||""):"";var targetId=targetSel?String(targetSel.value||""):"";if(_editLogTr){reverseAllocations(parseAllocsFromTr(_editLogTr));_editLogTr.remove();_editLogTr=null;resetLogBtn();}var allocs=applyPayment(amt,targetId);if(CFG.paidOffStatus)orderedRows().forEach(function(tr){syncRowPaidOff(tr,dt);});addLogRow({date:dt,amount:String(amt),note:note,payTarget:targetId,allocations:allocs},true);if(amtInp)amtInp.value="";if(noteInp)noteInp.value="";if(targetSel)targetSel.value="";recalc();});' +
-    'if(elLogTb)elLogTb.addEventListener("click",function(ev){var editBtn=ev.target.closest&&ev.target.closest("."+P+"-log-edit");if(editBtn){var trE=editBtn.closest("tr");if(trE&&trE.parentNode===elLogTb)startEditLogRow(trE);return;}var b=ev.target.closest&&ev.target.closest("."+P+"-log-del");if(!b)return;var tr=b.closest("tr");if(tr&&tr.parentNode===elLogTb){if(_editLogTr===tr){_editLogTr=null;resetLogBtn();}reverseAllocations(parseAllocsFromTr(tr));tr.remove();recalc();}});' +
+    'if(elLogTb)elLogTb.addEventListener("click",function(ev){var editBtn=ev.target.closest&&ev.target.closest("."+P+"-log-edit");if(editBtn){var trE=editBtn.closest("tr");if(trE&&trE.parentNode===elLogTb)startEditLogRow(trE);return;}var delBtn=ev.target.closest&&ev.target.closest("."+P+"-log-delete");if(delBtn){var trD=delBtn.closest("tr");if(trD&&trD.parentNode===elLogTb)deleteLogRow(trD);return;}});' +
     'bindClick("lock-baseline",function(){var t=sumDebtItems(readDebtsFromDom());var bl=document.getElementById(gid("baseline"));if(bl)bl.value=String(t);recalc();});' +
     'bindClick("reset",function(){if(!confirm(CFG.resetConfirm))return;wsPut(SK,null);location.reload();});' +
     'function summaryToast(msg){var el=document.getElementById(gid("summary-toast"));if(el)el.textContent=msg||"";if(msg){setTimeout(function(){if(el&&el.textContent===msg)el.textContent="";},2800);}}' +
@@ -10934,8 +10959,9 @@ function buildCostPlannerWorkspaceHtml(cfg) {
     'var sumDl=document.getElementById(gid("summary-dl"));if(sumDl)sumDl.addEventListener("click",downloadSummary);' +
     'var _calY=new Date().getFullYear();var _calM=new Date().getMonth();var _calSel=null;' +
     'function paymentsForCalendar(){var pays=readPayments();var map={};pays.forEach(function(py){var d=py.date;if(!d)return;if(!map[d])map[d]=[];map[d].push(py);});return map;}' +
-    'function renderPaymentCalendar(){if(!CFG.paymentCalendar)return;var grid=document.getElementById(gid("cal-grid"));var title=document.getElementById(gid("cal-title"));var detail=document.getElementById(gid("cal-detail"));if(!grid||!title)return;var byDate=paymentsForCalendar();var monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];title.textContent=monthNames[_calM]+" "+_calY;grid.innerHTML="";var dow=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];dow.forEach(function(d){var h=document.createElement("div");h.className=P+"-cal-dow";h.textContent=d;grid.appendChild(h);});var first=new Date(_calY,_calM,1);var start=first.getDay();var days=new Date(_calY,_calM+1,0).getDate();for(var i=0;i<start;i++){var blank=document.createElement("div");blank.className=P+"-cal-day "+P+"-cal-empty";grid.appendChild(blank);}for(var day=1;day<=days;day++){var ds=_calY+"-"+String(_calM+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");var cell=document.createElement("button");cell.type="button";cell.className=P+"-cal-day";cell.textContent=String(day);if(byDate[ds]){cell.classList.add(P+"-cal-has-pay");cell.title=byDate[ds].length+" payment(s)";}if(_calSel===ds)cell.classList.add(P+"-cal-selected");cell.setAttribute("data-date",ds);grid.appendChild(cell);}if(detail){if(_calSel&&byDate[_calSel]){var html="<strong>"+_calSel+"</strong><ul>";byDate[_calSel].forEach(function(py){html+="<li>"+fmt(parseNum(py.amount));if(py.allocations&&py.allocations.length)html+=" → "+esc(formatAlloc(py.allocations));if(py.note)html+=" — "+esc(py.note);html+="</li>";});html+="</ul>";detail.innerHTML=html;}else if(_calSel){detail.innerHTML="<p>No payments on "+esc(_calSel)+".</p>";}else{detail.innerHTML="<p>Click a highlighted day to see what was paid toward the wedding.</p>";}}}' +
+    'function renderPaymentCalendar(){if(!CFG.paymentCalendar)return;var grid=document.getElementById(gid("cal-grid"));var title=document.getElementById(gid("cal-title"));var detail=document.getElementById(gid("cal-detail"));if(!grid||!title)return;var byDate=paymentsForCalendar();var monthNames=["January","February","March","April","May","June","July","August","September","October","November","December"];title.textContent=monthNames[_calM]+" "+_calY;grid.innerHTML="";var dow=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"];dow.forEach(function(d){var h=document.createElement("div");h.className=P+"-cal-dow";h.textContent=d;grid.appendChild(h);});var first=new Date(_calY,_calM,1);var start=first.getDay();var days=new Date(_calY,_calM+1,0).getDate();for(var i=0;i<start;i++){var blank=document.createElement("div");blank.className=P+"-cal-day "+P+"-cal-empty";grid.appendChild(blank);}for(var day=1;day<=days;day++){var ds=_calY+"-"+String(_calM+1).padStart(2,"0")+"-"+String(day).padStart(2,"0");var cell=document.createElement("button");cell.type="button";cell.className=P+"-cal-day";cell.textContent=String(day);if(byDate[ds]){cell.classList.add(P+"-cal-has-pay");cell.title=byDate[ds].length+" payment(s)";}if(_calSel===ds)cell.classList.add(P+"-cal-selected");cell.setAttribute("data-date",ds);grid.appendChild(cell);}if(detail){if(_calSel&&byDate[_calSel]){var html="<strong>"+_calSel+"</strong><ul>";byDate[_calSel].forEach(function(py){html+="<li class=\\""+P+"-cal-pay-item\\"><span class=\\""+P+"-cal-pay-amt\\">"+fmt(parseNum(py.amount))+"</span>";if(py.allocations&&py.allocations.length)html+="<span>"+esc(formatAlloc(py.allocations))+"</span>";if(py.note)html+="<span>— "+esc(py.note)+"</span>";html+="<span class=\\""+P+"-cal-pay-actions\\"><button type=\\"button\\" class=\\""+P+"-cal-log-edit\\" data-date=\\""+esc(py.date)+"\\" data-amt=\\""+esc(String(py.amount))+"\\" data-note=\\""+esc(py.note||"")+"\\">Edit</button><button type=\\"button\\" class=\\""+P+"-cal-log-delete\\" data-date=\\""+esc(py.date)+"\\" data-amt=\\""+esc(String(py.amount))+"\\" data-note=\\""+esc(py.note||"")+"\\">Delete</button></span></li>";});html+="</ul>";detail.innerHTML=html;}else if(_calSel){detail.innerHTML="<p>No payments on "+esc(_calSel)+".</p>";}else{detail.innerHTML="<p>Click a highlighted day to see what was paid toward the wedding.</p>";}}}' +
     'var calGrid=document.getElementById(gid("cal-grid"));if(calGrid){calGrid.addEventListener("click",function(ev){var btn=ev.target.closest("."+P+"-cal-day");if(!btn||btn.classList.contains(P+"-cal-empty"))return;var ds=btn.getAttribute("data-date");if(ds){_calSel=ds;renderPaymentCalendar();}});}' +
+    'var calDetailEl=document.getElementById(gid("cal-detail"));if(calDetailEl){calDetailEl.addEventListener("click",function(ev){var editBtn=ev.target.closest&&ev.target.closest("."+P+"-cal-log-edit");if(editBtn){var tr=findLogRowForPayment({date:editBtn.getAttribute("data-date"),amount:editBtn.getAttribute("data-amt"),note:editBtn.getAttribute("data-note")||""});if(tr)startEditLogRow(tr);return;}var delBtn=ev.target.closest&&ev.target.closest("."+P+"-cal-log-delete");if(delBtn){var tr2=findLogRowForPayment({date:delBtn.getAttribute("data-date"),amount:delBtn.getAttribute("data-amt"),note:delBtn.getAttribute("data-note")||""});if(tr2)deleteLogRow(tr2);}});}' +
     'var calPrev=document.getElementById(gid("cal-prev"));if(calPrev)calPrev.addEventListener("click",function(){_calM--;if(_calM<0){_calM=11;_calY--;}_calSel=null;renderPaymentCalendar();});' +
     'var calNext=document.getElementById(gid("cal-next"));if(calNext)calNext.addEventListener("click",function(){_calM++;if(_calM>11){_calM=0;_calY++;}_calSel=null;renderPaymentCalendar();});' +
     'var dateInp=document.getElementById(gid("log-date"));if(dateInp&&!dateInp.value)dateInp.value=new Date().toISOString().slice(0,10);' +
@@ -11470,6 +11496,7 @@ function buildDebtTrackerWorkspaceHtml() {
     progressSub: 'Baseline tracks how much you started with',
     logBtn: 'Log payment',
     logUpdateBtn: 'Update payment',
+    logDeleteConfirm: 'Delete this payment?',
     paymentLabel: 'Payment (CAD)',
     lockBaseline: 'Set baseline from current total',
     resetBtn: 'Reset all data',
@@ -11537,6 +11564,7 @@ function buildMarriageCostWorkspaceHtml() {
     progressSub: 'Baseline tracks your starting wedding budget',
     logBtn: 'Log contribution',
     logUpdateBtn: 'Update contribution',
+    logDeleteConfirm: 'Delete this contribution?',
     paymentLabel: 'Contribution (CAD)',
     lockBaseline: 'Set baseline from current total',
     resetBtn: 'Reset all data',
