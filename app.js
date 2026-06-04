@@ -4563,6 +4563,7 @@ function isGuestAllowedRequest(req) {
   if (method === 'GET' && p === '/tickets') return true;
   if (method === 'GET' && p === '/debt-tracker') return true;
   if (method === 'GET' && p === '/marriage-cost') return true;
+  if (method === 'GET' && p === '/projected-date') return true;
   if (method === 'GET' && p === '/dashboard') return true;
   if (
     method === 'GET' &&
@@ -4862,6 +4863,7 @@ function thirdBrainWorkspaceSidebar(activePath) {
     nav('/tickets', 'Tickets') +
     nav('/debt-tracker', 'Debt tracker') +
     nav('/marriage-cost', 'Marriage cost') +
+    nav('/projected-date', 'Projected date') +
     '</nav></aside>'
   );
 }
@@ -11684,6 +11686,123 @@ function buildMarriageCostWorkspaceHtml() {
   });
 }
 
+function buildProjectedDateWorkspaceHtml() {
+  const keysJson = JSON.stringify({
+    debt: DEBT_TRACKER_STORAGE_KEY,
+    marriage: MARRIAGE_COST_STORAGE_KEY,
+    income: INCOME_STORAGE_KEY
+  });
+  const clientJs =
+    '(function(){' +
+    WORKSPACE_STORE_API_JS +
+    'var KEYS=' +
+    keysJson +
+    ';' +
+    'var D={debt:null,marriage:null,income:null};' +
+    'function fmt(n){return new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(n||0);}' +
+    'function pn(v){var x=parseFloat(String(v).replace(/,/g,""));return isFinite(x)?x:0;}' +
+    'function esc(s){return String(s==null?"":s).split("<").join("&lt;").split(">").join("&gt;").split("\\"").join("&quot;");}' +
+    'function toMo(a,f){var v=pn(a);if(f==="biweekly")return v*26/12;if(f==="weekly")return v*52/12;if(f==="annual")return v/12;return v;}' +
+    'function sumIncome(d){if(!d||!d.sources)return 0;var s=0;d.sources.forEach(function(src){(src.lines||[]).forEach(function(L){s+=toMo(L.amount,L.frequency||"monthly");});});return s;}' +
+    'function plannerIncome(pl,incomePage){if(!pl)return 0;if(pl.useIncomePage&&incomePage)return sumIncome(incomePage);return pn(pl.incomeMonthly);}' +
+    'function sumRemaining(items){if(!Array.isArray(items))return 0;var s=0;items.forEach(function(it){s+=pn(it&&it.balance);});return Math.round(s*100)/100;}' +
+    'function addMonths(d,n){var x=new Date(d);x.setMonth(x.getMonth()+n);return x;}' +
+    'function fmtDate(d){return d.toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"});}' +
+    'function monthsBetween(from,to){return Math.max(0,(to.getFullYear()-from.getFullYear())*12+(to.getMonth()-from.getMonth()));}' +
+    'function projMonths(total,moPay){if(total<=0.009||moPay<=0.009)return 0;return Math.ceil(total/moPay);}' +
+    'function projDate(total,moPay){var m=projMonths(total,moPay);return m>0?addMonths(new Date(),m):null;}' +
+    'function formatAlloc(allocs){if(!allocs||!allocs.length)return "";return allocs.map(function(a){return (a.label||"Item")+" "+fmt(a.amount);}).join(", ");}' +
+    'function pushEvent(map,ds,ev){if(!ds)return;if(!map[ds])map[ds]=[];map[ds].push(ev);}' +
+    'function buildTimeline(){var debt=D.debt||{};var wed=D.marriage||{};var incPage=D.income;var debtInc=plannerIncome(debt,incPage);var wedInc=plannerIncome(wed,incPage);var debtRem=sumRemaining(debt.debtItems);var wedRem=sumRemaining(wed.debtItems);var debtPct=pn(debt.debtPct);var wedPct=pn(wed.debtPct);var debtMo=debtInc*(debtPct/100);var wedMo=wedInc*(wedPct/100);var today=new Date();today.setHours(12,0,0,0);var todayStr=today.toISOString().slice(0,10);var map={};(debt.payments||[]).forEach(function(py){if(!py.date)return;pushEvent(map,py.date,{kind:"logged",track:"debt",amount:pn(py.amount),alloc:formatAlloc(py.allocations),note:py.note||""});});(wed.payments||[]).forEach(function(py){if(!py.date)return;pushEvent(map,py.date,{kind:"logged",track:"wedding",amount:pn(py.amount),alloc:formatAlloc(py.allocations),note:py.note||""});});var debtTarget=String(debt.targetDate||"").trim();var wedTarget=String(wed.targetDate||"").trim();if(debtTarget)pushEvent(map,debtTarget,{kind:"target",track:"debt",amount:0,note:"Debt-free target date"});if(wedTarget)pushEvent(map,wedTarget,{kind:"target",track:"wedding",amount:0,note:"Wedding funded target date"});if(debtRem>0.009&&debtMo>0.009){var cursor=new Date(today);cursor.setDate(1);cursor.setMonth(cursor.getMonth()+1);var left=debtRem;var guard=0;while(left>0.009&&guard<96){guard++;var ds=cursor.toISOString().slice(0,10);if(!map[ds]||!map[ds].some(function(e){return e.kind==="projected"&&e.track==="debt";})){var amt=Math.round(Math.min(left,debtMo)*100)/100;pushEvent(map,ds,{kind:"projected",track:"debt",amount:amt,note:"Projected at "+Math.round(debtPct)+"% of income ("+fmt(debtMo)+"/mo)"});left=Math.round((left-amt)*100)/100;}cursor.setMonth(cursor.getMonth()+1);}}if(wedRem>0.009&&wedMo>0.009){var cursor2=new Date(today);cursor2.setDate(1);cursor2.setMonth(cursor2.getMonth()+1);var left2=wedRem;var guard2=0;while(left2>0.009&&guard2<96){guard2++;var ds2=cursor2.toISOString().slice(0,10);if(!map[ds2]||!map[ds2].some(function(e){return e.kind==="projected"&&e.track==="wedding";})){var amt2=Math.round(Math.min(left2,wedMo)*100)/100;pushEvent(map,ds2,{kind:"projected",track:"wedding",amount:amt2,note:"Projected at "+Math.round(wedPct)+"% of income ("+fmt(wedMo)+"/mo)"});left2=Math.round((left2-amt2)*100)/100;}cursor2.setMonth(cursor2.getMonth()+1);}}var dates=Object.keys(map).sort();if(dates.indexOf(todayStr)<0){var ins=dates.length;for(var i=0;i<dates.length;i++){if(dates[i]>todayStr){ins=i;break;}}dates.splice(ins,0,todayStr);map[todayStr]=map[todayStr]||[];}return{dates:dates,map:map,todayStr:todayStr,debtRem:debtRem,wedRem:wedRem,debtMo:debtMo,wedMo:wedMo,debtTarget:debtTarget,wedTarget:wedTarget};}' +
+    'function setText(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}' +
+    'function renderOverview(){var debt=D.debt||{};var wed=D.marriage||{};var incPage=D.income;var debtInc=plannerIncome(debt,incPage);var wedInc=plannerIncome(wed,incPage);var debtRem=sumRemaining(debt.debtItems);var wedRem=sumRemaining(wed.debtItems);var debtPct=pn(debt.debtPct);var wedPct=pn(wed.debtPct);var debtMo=debtInc*(debtPct/100);var wedMo=wedInc*(wedPct/100);var debtProj=projDate(debtRem,debtMo);var wedProj=projDate(wedRem,wedMo);setText("pd-kpi-debt-rem",fmt(debtRem));setText("pd-kpi-debt-mo",debtMo>0?fmt(debtMo)+"/mo ("+Math.round(debtPct)+"% income)":"Set income & % on Debt tracker");setText("pd-kpi-debt-proj",debtProj?("Projected debt-free: "+fmtDate(debtProj)):debtRem<=0.009?"Debt-free":"—");setText("pd-kpi-wed-rem",fmt(wedRem));setText("pd-kpi-wed-mo",wedMo>0?fmt(wedMo)+"/mo ("+Math.round(wedPct)+"% income)":"Set income & % on Marriage cost");setText("pd-kpi-wed-proj",wedProj?("Projected funded: "+fmtDate(wedProj)):wedRem<=0.009?"Fully funded":"—");var debtTarget=String(debt.targetDate||"").trim();var wedTarget=String(wed.targetDate||"").trim();var debtTargetInp=document.getElementById("pd-debt-target");var wedTargetInp=document.getElementById("pd-wed-target");if(debtTargetInp&&document.activeElement!==debtTargetInp)debtTargetInp.value=debtTarget; if(wedTargetInp&&document.activeElement!==wedTargetInp)wedTargetInp.value=wedTarget;var debtStatus=document.getElementById("pd-debt-target-status");var wedStatus=document.getElementById("pd-wed-target-status");if(debtStatus){if(!debtTarget)debtStatus.textContent="No target set.";else if(debtProj&&debtTarget){var dt=new Date(debtTarget+"T12:00:00");var diff=Math.round((dt-debtProj)/86400000);debtStatus.textContent=diff>=0?"On track — target is "+Math.abs(diff)+" day"+(Math.abs(diff)===1?"":"s")+" after projected payoff.":"Behind — need ~"+fmt(Math.max(0,(debtRem/monthsBetween(new Date(),dt)||1)-debtMo))+" more per month.";}else debtStatus.textContent="Target: "+debtTarget;}if(wedStatus){if(!wedTarget)wedStatus.textContent="No target set.";else if(wedProj&&wedTarget){var dt2=new Date(wedTarget+"T12:00:00");var diff2=Math.round((dt2-wedProj)/86400000);wedStatus.textContent=diff2>=0?"On track — target is "+Math.abs(diff2)+" day"+(Math.abs(diff2)===1?"":"s")+" after projected funding.":"Behind — need ~"+fmt(Math.max(0,(wedRem/monthsBetween(new Date(),dt2)||1)-wedMo))+" more per month.";}else wedStatus.textContent="Target: "+wedTarget;}}' +
+    'function renderTimeline(){var host=document.getElementById("pd-timeline");if(!host)return;var tl=buildTimeline();var dates=tl.dates;var map=tl.map;var todayStr=tl.todayStr;if(!dates.length){host.innerHTML="<p class=\\"pd-timeline-empty\\">Log payments on Debt tracker or Marriage cost to build your timeline.</p>";return;}var html="";dates.forEach(function(ds,idx){var events=map[ds]||[];var d=new Date(ds+"T12:00:00");var dateLbl=d.toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"});var dayLbl=d.toLocaleDateString("en-CA",{weekday:"long"});var isToday=ds===todayStr;var hasLogged=events.some(function(e){return e.kind==="logged";});var hasProj=events.some(function(e){return e.kind==="projected";});var hasTarget=events.some(function(e){return e.kind==="target";});var dotCls="pd-timeline-dot";if(hasTarget)dotCls+=" pd-timeline-dot-target";else if(hasProj&&!hasLogged)dotCls+=" pd-timeline-dot-projected";else if(ds<=todayStr)dotCls+=" pd-timeline-dot-done";else dotCls+=" pd-timeline-dot-future";var itemCls="pd-timeline-item";if(isToday)itemCls+=" pd-timeline-item-today";if(hasProj)itemCls+=" pd-timeline-item-projected";html+="<div class=\\""+itemCls+"\\" data-date=\\""+esc(ds)+"\\">";html+="<div class=\\"pd-timeline-left\\"><span class=\\"pd-timeline-date-lbl\\">"+esc(dateLbl)+"</span><span class=\\"pd-timeline-day-lbl\\">"+esc(dayLbl)+"</span></div>";html+="<div class=\\"pd-timeline-rail\\"><span class=\\""+dotCls+"\\"></span>";if(idx<dates.length-1)html+="<span class=\\"pd-timeline-line\\"></span>";html+="</div><div class=\\"pd-timeline-body\\">";if(isToday)html+="<p class=\\"pd-timeline-you\\">You are here</p>";if(isToday&&!events.length)html+="<p class=\\"pd-timeline-meta\\">Today</p>";events.forEach(function(ev){var trackCls=ev.track==="debt"?"pd-event-debt":"pd-event-wed";var trackLbl=ev.track==="debt"?"Debt":"Wedding";html+="<div class=\\"pd-timeline-event "+trackCls+"\\">";if(ev.kind==="target")html+="<strong>Target — "+esc(trackLbl)+"</strong> <span>"+esc(ev.note)+"</span>";else if(ev.kind==="projected")html+="<strong>"+fmt(ev.amount)+"</strong> <span class=\\"pd-track-tag\\">"+trackLbl+" projected</span><span class=\\"pd-timeline-meta\\">"+esc(ev.note)+"</span>";else html+="<strong>"+fmt(ev.amount)+"</strong> <span class=\\"pd-track-tag\\">"+trackLbl+" logged</span>"+(ev.alloc?" <span>"+esc(ev.alloc)+"</span>":"")+(ev.note?" <span class=\\"pd-timeline-note\\">— "+esc(ev.note)+"</span>":"")+"<span class=\\"pd-timeline-meta\\">Logged payment</span>";html+="</div>";});html+="</div></div>";});host.innerHTML=html;}' +
+    'function renderAll(){renderOverview();renderTimeline();}' +
+    'var _saveTimer=null;function saveTarget(track,dateVal){clearTimeout(_saveTimer);_saveTimer=setTimeout(function(){var key=track==="debt"?KEYS.debt:KEYS.marriage;var payload=track==="debt"?Object.assign({},D.debt||{}):Object.assign({},D.marriage||{});payload.targetDate=dateVal||"";wsPut(key,payload,function(err){if(!err){if(track==="debt")D.debt=payload;else D.marriage=payload;var toast=document.getElementById("pd-save-toast");if(toast){toast.textContent="Saved "+(track==="debt"?"debt-free":"wedding")+" target date.";setTimeout(function(){if(toast.textContent.indexOf("Saved")===0)toast.textContent="";},2200);}renderOverview();renderTimeline();}});},400);}' +
+    'function loadAll(){var left=3;function done(){left--;if(left<=0)renderAll();}wsGet(KEYS.debt,function(e,d){D.debt=d;done();});wsGet(KEYS.marriage,function(e,d){D.marriage=d;done();});wsGet(KEYS.income,function(e,d){D.income=d;done();});}' +
+    'var debtInp=document.getElementById("pd-debt-target");if(debtInp)debtInp.addEventListener("change",function(){saveTarget("debt",debtInp.value);});' +
+    'var wedInp=document.getElementById("pd-wed-target");if(wedInp)wedInp.addEventListener("change",function(){saveTarget("wedding",wedInp.value);});' +
+    'loadAll();' +
+    '})();';
+  const script = '<script>' + clientJs + '<' + '/script>';
+  return (
+    '<div class="analytics-toolbar">' +
+    '<div><h1>Projected date</h1>' +
+    '<p class="sub">Set debt-free and wedding target dates, then see a combined timeline of logged payments and projected milestones.</p></div>' +
+    '<div class="analytics-toolbar-actions">' +
+    '<a class="link-pill" href="/">Home</a>' +
+    '<a class="link-pill" href="/dashboard">Dashboard</a>' +
+    '<a class="link-pill" href="/debt-tracker">Debt tracker</a>' +
+    '<a class="link-pill" href="/marriage-cost">Marriage cost</a>' +
+    '</div></div>' +
+    '<div class="analytics-body">' +
+    '<style>' +
+    '.pd-panel{border:1px solid #e5e7eb;border-radius:12px;padding:20px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,0.06);margin-bottom:18px}' +
+    '.pd-grid{display:grid;gap:16px}@media(min-width:900px){.pd-grid{grid-template-columns:1fr 1fr}}' +
+    '.pd-card{border:1px solid #e5e7eb;border-radius:10px;padding:16px;background:#fafafa}' +
+    '.pd-card h2{margin:0 0 10px;font-size:14px;font-weight:800;color:#0f172a}' +
+    '.pd-field{margin:0 0 10px;display:flex;flex-direction:column;gap:6px}' +
+    '.pd-field label{font-size:12px;font-weight:700;color:#475569}' +
+    '.pd-field input[type=date]{font:inherit;padding:8px 10px;border:1px solid #cbd5e1;border-radius:8px;max-width:220px}' +
+    '.pd-status{margin:0;font-size:12px;color:#64748b;line-height:1.45}' +
+    '.pd-kpis{display:grid;gap:12px;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));margin-bottom:14px}' +
+    '.pd-kpi{border:1px solid #e5e7eb;border-radius:10px;padding:12px 14px;background:#fff}' +
+    '.pd-kpi-lab{margin:0 0 4px;font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b}' +
+    '.pd-kpi-val{margin:0;font-size:1.2rem;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums}' +
+    '.pd-kpi-sub{margin:6px 0 0;font-size:12px;color:#64748b;line-height:1.4}' +
+    '.pd-timeline{margin-top:6px}' +
+    '.pd-timeline-item{display:grid;grid-template-columns:5.75rem 1.35rem 1fr;gap:10px 14px;padding:0 0 24px;align-items:start}' +
+    '.pd-timeline-left{text-align:right;padding-top:2px}' +
+    '.pd-timeline-date-lbl{display:block;font-weight:800;font-size:13px;color:#0f172a;font-variant-numeric:tabular-nums}' +
+    '.pd-timeline-day-lbl{display:block;font-size:11px;color:#64748b;margin-top:2px}' +
+    '.pd-timeline-rail{position:relative;display:flex;flex-direction:column;align-items:center;min-height:100%}' +
+    '.pd-timeline-dot{width:12px;height:12px;border-radius:999px;background:#fff;border:2px solid #94a3b8;flex-shrink:0;z-index:1;box-sizing:border-box}' +
+    '.pd-timeline-dot-done{background:#0d9488;border-color:#0d9488}' +
+    '.pd-timeline-dot-future{background:#fff;border-color:#cbd5e1}' +
+    '.pd-timeline-dot-projected{background:#fff;border:2px dashed #f472b6}' +
+    '.pd-timeline-dot-target{background:#f59e0b;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.25)}' +
+    '.pd-timeline-line{flex:1;width:2px;background:#e2e8f0;margin-top:4px;min-height:28px}' +
+    '.pd-timeline-body{min-width:0}' +
+    '.pd-timeline-you{margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488}' +
+    '.pd-timeline-event{margin:0 0 8px;font-size:14px;color:#0f172a;line-height:1.45}' +
+    '.pd-timeline-event strong{font-variant-numeric:tabular-nums}' +
+    '.pd-timeline-meta{display:block;font-size:11px;color:#64748b;margin-top:3px}' +
+    '.pd-timeline-note{color:#64748b}' +
+    '.pd-timeline-item-today .pd-timeline-body{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px}' +
+    '.pd-timeline-item-projected .pd-event-wed{color:#831843}' +
+    '.pd-timeline-item-projected .pd-event-debt{color:#991b1b}' +
+    '.pd-event-debt .pd-track-tag{color:#b91c1c;font-weight:700;font-size:12px}' +
+    '.pd-event-wed .pd-track-tag{color:#be185d;font-weight:700;font-size:12px}' +
+    '.pd-timeline-empty{margin:0;font-size:13px;color:#64748b;line-height:1.45}' +
+    '#pd-save-toast{margin:8px 0 0;font-size:12px;color:#15803d;font-weight:600;min-height:18px}' +
+    '</style>' +
+    '<div class="pd-panel">' +
+    '<div class="pd-grid">' +
+    '<div class="pd-card"><h2>Debt-free target</h2>' +
+    '<label class="pd-field"><span>Target date</span><input type="date" id="pd-debt-target" aria-label="Debt-free target date"/></label>' +
+    '<p id="pd-debt-target-status" class="pd-status">Loading…</p></div>' +
+    '<div class="pd-card"><h2>Wedding funded target</h2>' +
+    '<label class="pd-field"><span>Target date</span><input type="date" id="pd-wed-target" aria-label="Wedding funded target date"/></label>' +
+    '<p id="pd-wed-target-status" class="pd-status">Loading…</p></div>' +
+    '</div>' +
+    '<p id="pd-save-toast" aria-live="polite"></p>' +
+    '</div>' +
+    '<div class="pd-panel">' +
+    '<h2 style="margin:0 0 12px;font-size:15px;font-weight:800;color:#0f172a">Overview</h2>' +
+    '<div class="pd-kpis">' +
+    '<div class="pd-kpi"><p class="pd-kpi-lab">Debt remaining</p><p id="pd-kpi-debt-rem" class="pd-kpi-val">—</p><p id="pd-kpi-debt-mo" class="pd-kpi-sub">—</p><p id="pd-kpi-debt-proj" class="pd-kpi-sub">—</p></div>' +
+    '<div class="pd-kpi"><p class="pd-kpi-lab">Wedding remaining</p><p id="pd-kpi-wed-rem" class="pd-kpi-val">—</p><p id="pd-kpi-wed-mo" class="pd-kpi-sub">—</p><p id="pd-kpi-wed-proj" class="pd-kpi-sub">—</p></div>' +
+    '</div></div>' +
+    '<div class="pd-panel">' +
+    '<h2 style="margin:0 0 8px;font-size:15px;font-weight:800;color:#0f172a">Combined timeline</h2>' +
+    '<p style="margin:0 0 12px;font-size:12px;color:#64748b;line-height:1.45">Green dots = logged payments · Dashed = projected monthly contributions · Gold = your target dates · Dates and weekdays on the left.</p>' +
+    '<div id="pd-timeline" class="pd-timeline" aria-live="polite"></div>' +
+    '</div>' +
+    script +
+    '</div>'
+  );
+}
+
 // --- HTTP routes: Third brain ---
 
 app.get('/api/board-store/:boardKey', async (req, res) => {
@@ -11767,6 +11886,10 @@ app.get('/', (req, res) => {
       <h2>Marriage cost</h2>
       <span>Wedding budget by category—income % savings plan, funded date, and contribution log.</span>
     </a>
+    <a class="sb-card" href="/projected-date">
+      <h2>Projected date</h2>
+      <span>Set debt-free and wedding target dates and see a combined payment timeline.</span>
+    </a>
     </nav>
   </section>`
     )
@@ -11815,6 +11938,12 @@ app.get('/marriage-cost', (req, res) => {
   const canvas = buildMarriageCostWorkspaceHtml();
   res.type('html').send(renderSecondBrainWorkspace('Marriage cost — Third brain', '/marriage-cost', canvas));
 });
+
+app.get('/projected-date', (req, res) => {
+  const canvas = buildProjectedDateWorkspaceHtml();
+  res.type('html').send(renderSecondBrainWorkspace('Projected date — Third brain', '/projected-date', canvas));
+});
+
 app.use((req, res) => {
   res.status(404).type('text/plain').send('Not found');
 });
