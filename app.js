@@ -11689,159 +11689,92 @@ function buildMarriageCostWorkspaceHtml() {
 }
 
 function buildProjectedDateWorkspaceHtml() {
-  const keysJson = JSON.stringify({
-    debt: DEBT_TRACKER_STORAGE_KEY,
-    marriage: MARRIAGE_COST_STORAGE_KEY,
-    income: INCOME_STORAGE_KEY,
-    projected: PROJECTED_DATE_STORAGE_KEY
-  });
+  const storeKey = JSON.stringify(PROJECTED_DATE_STORAGE_KEY);
   const clientJs =
     '(function(){' +
     WORKSPACE_STORE_API_JS +
-    'var KEYS=' +
-    keysJson +
+    'var SK=' +
+    storeKey +
     ';' +
-    'var D={debt:null,marriage:null,income:null,projected:null};' +
-    'function fmt(n){return new Intl.NumberFormat("en-CA",{style:"currency",currency:"CAD"}).format(n||0);}' +
-    'function pn(v){var x=parseFloat(String(v).replace(/,/g,""));return isFinite(x)?x:0;}' +
+    'var dates=[];' +
     'function esc(s){return String(s==null?"":s).split("<").join("&lt;").split(">").join("&gt;").split("\\"").join("&quot;");}' +
-    'function toMo(a,f){var v=pn(a);if(f==="biweekly")return v*26/12;if(f==="weekly")return v*52/12;if(f==="annual")return v/12;return v;}' +
-    'function sumIncome(d){if(!d||!d.sources)return 0;var s=0;d.sources.forEach(function(src){(src.lines||[]).forEach(function(L){s+=toMo(L.amount,L.frequency||"monthly");});});return s;}' +
-    'function plannerIncome(pl,incomePage){if(!pl)return 0;if(pl.useIncomePage&&incomePage)return sumIncome(incomePage);return pn(pl.incomeMonthly);}' +
-    'function sumRemaining(items){if(!Array.isArray(items))return 0;var s=0;items.forEach(function(it){s+=pn(it&&it.balance);});return Math.round(s*100)/100;}' +
-    'function addMonths(d,n){var x=new Date(d);x.setMonth(x.getMonth()+n);return x;}' +
-    'function fmtDate(d){return d.toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"});}' +
-    'function monthsBetween(from,to){return Math.max(0,(to.getFullYear()-from.getFullYear())*12+(to.getMonth()-from.getMonth()));}' +
-    'function projMonths(total,moPay){if(total<=0.009||moPay<=0.009)return 0;return Math.ceil(total/moPay);}' +
-    'function projDate(total,moPay){var m=projMonths(total,moPay);return m>0?addMonths(new Date(),m):null;}' +
-    'function formatAlloc(allocs){if(!allocs||!allocs.length)return "";return allocs.map(function(a){return (a.label||"Item")+" "+fmt(a.amount);}).join(", ");}' +
-    'function pushEvent(map,ds,ev){if(!ds)return;if(!map[ds])map[ds]=[];map[ds].push(ev);}' +
-    'function projectedList(){var p=D.projected;return Array.isArray(p&&p.projectedDates)?p.projectedDates.slice():[];}' +
-    'function saveProjectedList(list,cb){var payload={projectedDates:list};wsPut(KEYS.projected,payload,function(err){if(!err)D.projected=payload;if(cb)cb(err);});}' +
-    'function newProjId(){return "pd-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);}' +
-    'function buildTimeline(){var debt=D.debt||{};var wed=D.marriage||{};var today=new Date();today.setHours(12,0,0,0);var todayStr=today.toISOString().slice(0,10);var map={};(debt.payments||[]).forEach(function(py){if(!py.date)return;pushEvent(map,py.date,{kind:"logged",track:"debt",amount:pn(py.amount),alloc:formatAlloc(py.allocations),note:py.note||""});});(wed.payments||[]).forEach(function(py){if(!py.date)return;pushEvent(map,py.date,{kind:"logged",track:"wedding",amount:pn(py.amount),alloc:formatAlloc(py.allocations),note:py.note||""});});var debtTarget=String(debt.targetDate||"").trim();var wedTarget=String(wed.targetDate||"").trim();if(debtTarget)pushEvent(map,debtTarget,{kind:"target",track:"debt",amount:0,note:"Debt-free target"});if(wedTarget)pushEvent(map,wedTarget,{kind:"target",track:"wedding",amount:0,note:"Wedding funded target"});projectedList().forEach(function(row){if(!row||!row.date)return;var track=row.track||"milestone";if(track!=="debt"&&track!=="wedding")track="milestone";var lbl=String(row.label||row.note||"").trim()||"Important date";pushEvent(map,row.date,{kind:"planned",track:track,amount:pn(row.amount),note:lbl,id:row.id||""});});var dates=Object.keys(map).sort();if(dates.indexOf(todayStr)<0){var ins=dates.length;for(var i=0;i<dates.length;i++){if(dates[i]>todayStr){ins=i;break;}}dates.splice(ins,0,todayStr);map[todayStr]=map[todayStr]||[];}return{dates:dates,map:map,todayStr:todayStr};}' +
-    'function setText(id,val){var el=document.getElementById(id);if(el)el.textContent=val;}' +
-    'function renderOverview(){var debt=D.debt||{};var wed=D.marriage||{};var incPage=D.income;var debtInc=plannerIncome(debt,incPage);var wedInc=plannerIncome(wed,incPage);var debtRem=sumRemaining(debt.debtItems);var wedRem=sumRemaining(wed.debtItems);var debtPct=pn(debt.debtPct);var wedPct=pn(wed.debtPct);var debtMo=debtInc*(debtPct/100);var wedMo=wedInc*(wedPct/100);var debtProj=projDate(debtRem,debtMo);var wedProj=projDate(wedRem,wedMo);setText("pd-kpi-debt-rem",fmt(debtRem));setText("pd-kpi-debt-mo",debtMo>0?fmt(debtMo)+"/mo ("+Math.round(debtPct)+"% income)":"Set income & % on Debt tracker");setText("pd-kpi-debt-proj",debtProj?("Est. debt-free: "+fmtDate(debtProj)):debtRem<=0.009?"Debt-free":"—");setText("pd-kpi-wed-rem",fmt(wedRem));setText("pd-kpi-wed-mo",wedMo>0?fmt(wedMo)+"/mo ("+Math.round(wedPct)+"% income)":"Set income & % on Marriage cost");setText("pd-kpi-wed-proj",wedProj?("Est. funded: "+fmtDate(wedProj)):wedRem<=0.009?"Fully funded":"—");var debtTarget=String(debt.targetDate||"").trim();var wedTarget=String(wed.targetDate||"").trim();var debtTargetInp=document.getElementById("pd-debt-target");var wedTargetInp=document.getElementById("pd-wed-target");if(debtTargetInp&&document.activeElement!==debtTargetInp)debtTargetInp.value=debtTarget;if(wedTargetInp&&document.activeElement!==wedTargetInp)wedTargetInp.value=wedTarget;var debtStatus=document.getElementById("pd-debt-target-status");var wedStatus=document.getElementById("pd-wed-target-status");if(debtStatus){if(!debtTarget)debtStatus.textContent="No target set.";else if(debtProj&&debtTarget){var dt=new Date(debtTarget+"T12:00:00");var diff=Math.round((dt-debtProj)/86400000);debtStatus.textContent=diff>=0?"On track — target is "+Math.abs(diff)+" day"+(Math.abs(diff)===1?"":"s")+" after estimated payoff.":"Behind — need ~"+fmt(Math.max(0,(debtRem/monthsBetween(new Date(),dt)||1)-debtMo))+" more per month.";}else debtStatus.textContent="Target: "+debtTarget;}if(wedStatus){if(!wedTarget)wedStatus.textContent="No target set.";else if(wedProj&&wedTarget){var dt2=new Date(wedTarget+"T12:00:00");var diff2=Math.round((dt2-wedProj)/86400000);wedStatus.textContent=diff2>=0?"On track — target is "+Math.abs(diff2)+" day"+(Math.abs(diff2)===1?"":"s")+" after estimated funding.":"Behind — need ~"+fmt(Math.max(0,(wedRem/monthsBetween(new Date(),dt2)||1)-wedMo))+" more per month.";}else wedStatus.textContent="Target: "+wedTarget;}}' +
-    'function trackLabel(t){if(t==="debt")return "Debt";if(t==="wedding")return "Wedding";return "Milestone";}' +
-    'function renderProjectedTable(){var tb=document.getElementById("pd-proj-tbody");if(!tb)return;var list=projectedList().slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date));});tb.innerHTML="";if(!list.length){tb.innerHTML="<tr><td colspan=\\"5\\">No dates yet — use the form above.</td></tr>";return;}list.forEach(function(row){var tr=document.createElement("tr");tr.setAttribute("data-proj-id",row.id||"");var amt=pn(row.amount)>0?fmt(row.amount):"—";var lbl=String(row.label||row.note||"");tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+esc(trackLabel(row.track))+"</td><td>"+esc(lbl)+"</td><td>"+esc(amt)+"</td><td><button type=\\"button\\" class=\\"pd-proj-del\\" data-proj-id=\\""+esc(row.id||"")+"\\">Delete</button></td>";tb.appendChild(tr);});}' +
-    'function renderTimeline(){var host=document.getElementById("pd-timeline");if(!host)return;var tl=buildTimeline();var dates=tl.dates;var map=tl.map;var todayStr=tl.todayStr;var hasPlanned=projectedList().length>0;var hasLogged=(D.debt&&D.debt.payments&&D.debt.payments.length)||(D.marriage&&D.marriage.payments&&D.marriage.payments.length);if(!dates.length||(!hasPlanned&&!hasLogged&&dates.length<=1)){host.innerHTML="<p class=\\"pd-timeline-empty\\">Add important dates on the left — the timeline updates here. Logged payments from Debt tracker and Marriage cost also appear.</p>";return;}var html="";dates.forEach(function(ds,idx){var events=map[ds]||[];var d=new Date(ds+"T12:00:00");var dateLbl=d.toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"});var dayLbl=d.toLocaleDateString("en-CA",{weekday:"long"});var isToday=ds===todayStr;var hasLoggedEv=events.some(function(e){return e.kind==="logged";});var hasPlannedEv=events.some(function(e){return e.kind==="planned";});var hasTarget=events.some(function(e){return e.kind==="target";});var dotCls="pd-timeline-dot";if(hasTarget)dotCls+=" pd-timeline-dot-target";else if(hasPlannedEv&&!hasLoggedEv)dotCls+=" pd-timeline-dot-planned";else if(isToday)dotCls+=" pd-timeline-dot-today";else if(ds<todayStr)dotCls+=" pd-timeline-dot-done";else dotCls+=" pd-timeline-dot-future";var itemCls="pd-timeline-item";if(isToday)itemCls+=" pd-timeline-item-today";if(hasPlannedEv)itemCls+=" pd-timeline-item-planned";html+="<div class=\\""+itemCls+"\\" data-date=\\""+esc(ds)+"\\">";html+="<div class=\\"pd-timeline-left\\"><span class=\\"pd-timeline-date-lbl\\">"+esc(dateLbl)+"</span><span class=\\"pd-timeline-day-lbl\\">"+esc(dayLbl)+"</span></div>";html+="<div class=\\"pd-timeline-rail\\"><span class=\\""+dotCls+"\\"></span>";if(idx<dates.length-1)html+="<span class=\\"pd-timeline-line\\"></span>";html+="</div><div class=\\"pd-timeline-body\\">";if(isToday)html+="<p class=\\"pd-timeline-you\\">You are here</p>";if(isToday&&!events.length)html+="<p class=\\"pd-timeline-meta\\">Today</p>";events.forEach(function(ev){var trackCls=ev.track==="debt"?"pd-event-debt":ev.track==="wedding"?"pd-event-wed":"pd-event-milestone";var tLbl=trackLabel(ev.track);html+="<div class=\\"pd-timeline-event "+trackCls+"\\">";if(ev.kind==="target")html+="<strong>Target — "+esc(tLbl)+"</strong> <span>"+esc(ev.note)+"</span>";else if(ev.kind==="planned"){html+="<strong>"+esc(ev.note)+"</strong>";if(pn(ev.amount)>0)html+=" <span>"+fmt(ev.amount)+"</span>";html+="<span class=\\"pd-timeline-meta\\">"+esc(tLbl)+" · date you added</span>";}else html+="<strong>"+fmt(ev.amount)+"</strong> <span class=\\"pd-track-tag\\">"+tLbl+" logged</span>"+(ev.alloc?" <span>"+esc(ev.alloc)+"</span>":"")+(ev.note?" <span class=\\"pd-timeline-note\\">— "+esc(ev.note)+"</span>":"")+"<span class=\\"pd-timeline-meta\\">Logged payment</span>";html+="</div>";});html+="</div></div>";});host.innerHTML=html;}' +
-    'function renderAll(){renderOverview();renderProjectedTable();renderTimeline();}' +
-    'function toast(msg){var el=document.getElementById("pd-save-toast");if(!el)return;el.textContent=msg||"";if(msg){setTimeout(function(){if(el.textContent===msg)el.textContent="";},2400);}}' +
-    'var _saveTimer=null;function saveTarget(track,dateVal){clearTimeout(_saveTimer);_saveTimer=setTimeout(function(){var key=track==="debt"?KEYS.debt:KEYS.marriage;var payload=track==="debt"?Object.assign({},D.debt||{}):Object.assign({},D.marriage||{});payload.targetDate=dateVal||"";wsPut(key,payload,function(err){if(!err){if(track==="debt")D.debt=payload;else D.marriage=payload;toast("Saved "+(track==="debt"?"debt-free":"wedding")+" target date.");renderOverview();renderTimeline();}});},400);}' +
-    'function addProjectedDate(){var trackSel=document.getElementById("pd-proj-track");var dateInp=document.getElementById("pd-proj-date");var amtInp=document.getElementById("pd-proj-amt");var labelInp=document.getElementById("pd-proj-label");if(!trackSel||!dateInp||!labelInp)return;var ds=String(dateInp.value||"").trim();if(!ds){alert("Choose a date.");return;}var label=String(labelInp.value||"").trim();if(!label){alert("Describe why this date is important.");labelInp.focus();return;}var track=trackSel.value==="wedding"?"wedding":trackSel.value==="milestone"?"milestone":"debt";var list=projectedList();if(list.some(function(r){return r.date===ds&&r.track===track&&String(r.label||r.note||"")===label;})){alert("That date is already listed.");return;}list.push({id:newProjId(),date:ds,track:track,amount:amtInp?String(amtInp.value||""):"",label:label,note:label});list.sort(function(a,b){return String(a.date).localeCompare(String(b.date));});saveProjectedList(list,function(err){if(err){alert("Could not save.");return;}if(amtInp)amtInp.value="";labelInp.value="";toast("Date added — timeline updated.");renderAll();});}' +
-    'function deleteProjectedDate(id){if(!id)return;if(!confirm("Delete this projected date?"))return;var list=projectedList().filter(function(r){return r.id!==id;});saveProjectedList(list,function(err){if(err){alert("Could not delete.");return;}toast("Projected date removed.");renderAll();});}' +
-    'function loadAll(){var left=4;function done(){left--;if(left<=0)renderAll();}wsGet(KEYS.debt,function(e,d){D.debt=d;done();});wsGet(KEYS.marriage,function(e,d){D.marriage=d;done();});wsGet(KEYS.income,function(e,d){D.income=d;done();});wsGet(KEYS.projected,function(e,d){D.projected=d&&Array.isArray(d.projectedDates)?d:{projectedDates:[]};done();});}' +
-    'var debtInp=document.getElementById("pd-debt-target");if(debtInp)debtInp.addEventListener("change",function(){saveTarget("debt",debtInp.value);});' +
-    'var wedInp=document.getElementById("pd-wed-target");if(wedInp)wedInp.addEventListener("change",function(){saveTarget("wedding",wedInp.value);});' +
-    'var addBtn=document.getElementById("pd-proj-add");if(addBtn)addBtn.addEventListener("click",addProjectedDate);' +
-    'var projTb=document.getElementById("pd-proj-tbody");if(projTb)projTb.addEventListener("click",function(ev){var btn=ev.target.closest&&ev.target.closest(".pd-proj-del");if(!btn)return;deleteProjectedDate(btn.getAttribute("data-proj-id"));});' +
-    'var dateInpInit=document.getElementById("pd-proj-date");if(dateInpInit&&!dateInpInit.value)dateInpInit.value=new Date().toISOString().slice(0,10);' +
-    'loadAll();' +
+    'function newId(){return "pd-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);}' +
+    'function saveList(cb){wsPut(SK,{projectedDates:dates},function(err){if(!err&&cb)cb();});}' +
+    'function toast(msg){var el=document.getElementById("pd-toast");if(!el)return;el.textContent=msg||"";if(msg){setTimeout(function(){if(el.textContent===msg)el.textContent="";},2200);}}' +
+    'function renderTable(){var tb=document.getElementById("pd-list-tbody");if(!tb)return;var list=dates.slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date));});tb.innerHTML="";if(!list.length){tb.innerHTML="<tr><td colspan=\\"3\\">No dates yet.</td></tr>";return;}list.forEach(function(row){var tr=document.createElement("tr");tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+esc(row.label||"")+"</td><td><button type=\\"button\\" class=\\"pd-del\\" data-id=\\""+esc(row.id)+"\\">Delete</button></td>";tb.appendChild(tr);});}' +
+    'function renderTimeline(){var host=document.getElementById("pd-timeline");if(!host)return;var today=new Date();today.setHours(12,0,0,0);var todayStr=today.toISOString().slice(0,10);var list=dates.slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date));});var all=list.map(function(r){return r.date;});if(all.indexOf(todayStr)<0){var ins=all.length;for(var i=0;i<all.length;i++){if(all[i]>todayStr){ins=i;break;}}all.splice(ins,0,todayStr);}if(!list.length&&all.length<=1){host.innerHTML="<p class=\\"pd-empty\\">Add a date and its significance — your calendar timeline appears here.</p>";return;}var html="";all.forEach(function(ds,idx){var d=new Date(ds+"T12:00:00");var dateLbl=d.toLocaleDateString("en-CA",{month:"short",day:"numeric",year:"numeric"});var dayLbl=d.toLocaleDateString("en-CA",{weekday:"long"});var isToday=ds===todayStr;var rows=list.filter(function(r){return r.date===ds;});var isPast=ds<todayStr;var dotCls="pd-dot";if(isToday)dotCls+=" pd-dot-today";else if(rows.length)dotCls+=isPast?" pd-dot-past":" pd-dot-future";else dotCls+=" pd-dot-muted";var itemCls="pd-item";if(isToday)itemCls+=" pd-item-today";html+="<div class=\\""+itemCls+"\\">";html+="<div class=\\"pd-item-left\\"><span class=\\"pd-date\\">"+esc(dateLbl)+"</span><span class=\\"pd-day\\">"+esc(dayLbl)+"</span></div>";html+="<div class=\\"pd-rail\\"><span class=\\""+dotCls+"\\"></span>";if(idx<all.length-1)html+="<span class=\\"pd-line\\"></span>";html+="</div><div class=\\"pd-body\\">";if(isToday)html+="<p class=\\"pd-you\\">You are here</p>";rows.forEach(function(r){html+="<p class=\\"pd-label\\">"+esc(r.label||"Important date")+"</p>";});if(isToday&&!rows.length)html+="<p class=\\"pd-muted\\">Today</p>";html+="</div></div>";});host.innerHTML=html;}' +
+    'function renderAll(){renderTable();renderTimeline();}' +
+    'function addDate(){var dateInp=document.getElementById("pd-date");var labelInp=document.getElementById("pd-label");if(!dateInp||!labelInp)return;var ds=String(dateInp.value||"").trim();var label=String(labelInp.value||"").trim();if(!ds){alert("Choose a date.");return;}if(!label){alert("Name the significance of this date.");labelInp.focus();return;}if(dates.some(function(r){return r.date===ds&&String(r.label||"")===label;})){alert("That date and label are already listed.");return;}dates.push({id:newId(),date:ds,label:label});dates.sort(function(a,b){return String(a.date).localeCompare(String(b.date));});saveList(function(){labelInp.value="";toast("Date added.");renderAll();});}' +
+    'function delDate(id){if(!id||!confirm("Remove this date?"))return;dates=dates.filter(function(r){return r.id!==id;});saveList(function(){toast("Date removed.");renderAll();});}' +
+    'document.getElementById("pd-add").addEventListener("click",addDate);' +
+    'document.getElementById("pd-list-tbody").addEventListener("click",function(ev){var btn=ev.target.closest&&ev.target.closest(".pd-del");if(btn)delDate(btn.getAttribute("data-id"));});' +
+    'var di=document.getElementById("pd-date");if(di&&!di.value)di.value=new Date().toISOString().slice(0,10);' +
+    'wsGet(SK,function(err,data){dates=data&&Array.isArray(data.projectedDates)?data.projectedDates.slice():[];renderAll();});' +
     '})();';
   const script = '<script>' + clientJs + '<' + '/script>';
   return (
     '<div class="analytics-toolbar">' +
     '<div><h1>Projected date</h1>' +
-    '<p class="sub">Add important dates on the left — overview and timeline update on the right. No auto-filled monthly dates.</p></div>' +
+    '<p class="sub">Calendar only — add dates and name what each one means. No amounts or payment math.</p></div>' +
     '<div class="analytics-toolbar-actions">' +
     '<a class="link-pill" href="/">Home</a>' +
-    '<a class="link-pill" href="/dashboard">Dashboard</a>' +
-    '<a class="link-pill" href="/debt-tracker">Debt tracker</a>' +
-    '<a class="link-pill" href="/marriage-cost">Marriage cost</a>' +
     '</div></div>' +
     '<div class="analytics-body">' +
     '<style>' +
     '.pd-split{display:grid;gap:20px;align-items:start}' +
-    '@media(min-width:1024px){.pd-split{grid-template-columns:minmax(300px,380px) 1fr}}' +
-    '.pd-left{display:flex;flex-direction:column;gap:16px}' +
-    '.pd-right{display:flex;flex-direction:column;gap:16px;min-width:0}' +
-    '@media(min-width:1024px){.pd-right{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}}' +
+    '@media(min-width:960px){.pd-split{grid-template-columns:minmax(280px,340px) 1fr}}' +
     '.pd-panel{border:1px solid #e5e7eb;border-radius:12px;padding:20px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,0.06)}' +
-    '.pd-panel h2{margin:0 0 10px;font-size:15px;font-weight:800;color:#0f172a}' +
-    '.pd-panel-lead{margin:0 0 14px;font-size:12px;color:#64748b;line-height:1.45}' +
+    '.pd-panel h2{margin:0 0 8px;font-size:15px;font-weight:800;color:#0f172a}' +
+    '.pd-lead{margin:0 0 14px;font-size:12px;color:#64748b;line-height:1.45}' +
     '.pd-field{margin:0 0 12px;display:flex;flex-direction:column;gap:6px}' +
     '.pd-field span{font-size:12px;font-weight:700;color:#475569}' +
-    '.pd-field input[type=date],.pd-field input[type=number],.pd-field input[type=text],.pd-field select{font:inherit;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;width:100%;box-sizing:border-box}' +
-    '.pd-status{margin:6px 0 0;font-size:12px;color:#64748b;line-height:1.45}' +
-    '.pd-target-grid{display:grid;gap:12px}' +
-    '.pd-add-btn{font:inherit;padding:10px 16px;border:none;border-radius:8px;background:#0f172a;color:#fff;font-weight:700;cursor:pointer;width:100%}' +
-    '.pd-add-btn:hover{background:#1e293b}' +
-    '.pd-proj-table{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}' +
-    '.pd-proj-table th{text-align:left;padding:7px 8px;background:#f8fafc;border-bottom:1px solid #e5e7eb;font-size:11px}' +
-    '.pd-proj-table td{padding:7px 8px;border-bottom:1px solid #f1f5f9;vertical-align:top;word-break:break-word}' +
-    '.pd-proj-del{border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:6px;padding:3px 8px;font-size:11px;font-weight:600;cursor:pointer;font:inherit}' +
-    '.pd-proj-del:hover{background:#fef2f2}' +
-    '.pd-kpis{display:grid;gap:10px;grid-template-columns:1fr 1fr}' +
-    '.pd-kpi{border:1px solid #e5e7eb;border-radius:10px;padding:12px;background:#fafafa}' +
-    '.pd-kpi-lab{margin:0 0 4px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.04em;color:#64748b}' +
-    '.pd-kpi-val{margin:0;font-size:1.1rem;font-weight:800;color:#0f172a;font-variant-numeric:tabular-nums}' +
-    '.pd-kpi-sub{margin:5px 0 0;font-size:11px;color:#64748b;line-height:1.35}' +
-    '.pd-timeline{margin-top:4px}' +
-    '.pd-timeline-item{display:grid;grid-template-columns:5.5rem 1.35rem 1fr;gap:8px 12px;padding:0 0 22px;align-items:start}' +
-    '.pd-timeline-left{text-align:right;padding-top:2px}' +
-    '.pd-timeline-date-lbl{display:block;font-weight:800;font-size:12px;color:#0f172a;font-variant-numeric:tabular-nums}' +
-    '.pd-timeline-day-lbl{display:block;font-size:10px;color:#64748b;margin-top:2px}' +
-    '.pd-timeline-rail{display:flex;flex-direction:column;align-items:center;min-height:100%}' +
-    '.pd-timeline-dot{width:12px;height:12px;border-radius:999px;background:#fff;border:2px solid #94a3b8;flex-shrink:0;z-index:1;box-sizing:border-box}' +
-    '.pd-timeline-dot-done{background:#0d9488;border-color:#0d9488}' +
-    '.pd-timeline-dot-today{background:#0d9488;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,0.25)}' +
-    '.pd-timeline-dot-future{background:#fff;border-color:#cbd5e1}' +
-    '.pd-timeline-dot-planned{background:#fff;border:2px dashed #6366f1}' +
-    '.pd-timeline-dot-target{background:#f59e0b;border-color:#f59e0b;box-shadow:0 0 0 3px rgba(245,158,11,0.25)}' +
-    '.pd-timeline-line{flex:1;width:2px;background:#e2e8f0;margin-top:4px;min-height:24px}' +
-    '.pd-timeline-body{min-width:0}' +
-    '.pd-timeline-you{margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488}' +
-    '.pd-timeline-event{margin:0 0 8px;font-size:13px;color:#0f172a;line-height:1.45}' +
-    '.pd-timeline-event strong{font-variant-numeric:tabular-nums}' +
-    '.pd-timeline-meta{display:block;font-size:10px;color:#64748b;margin-top:3px}' +
-    '.pd-timeline-note{color:#64748b}' +
-    '.pd-timeline-item-today .pd-timeline-body{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px}' +
-    '.pd-timeline-item-planned .pd-timeline-event{color:#3730a3}' +
-    '.pd-event-debt .pd-track-tag{color:#b91c1c;font-weight:700;font-size:11px}' +
-    '.pd-event-wed .pd-track-tag{color:#be185d;font-weight:700;font-size:11px}' +
-    '.pd-event-milestone{color:#4338ca}' +
-    '.pd-timeline-empty{margin:0;font-size:13px;color:#64748b;line-height:1.45}' +
-    '#pd-save-toast{margin:0;font-size:12px;color:#15803d;font-weight:600;min-height:18px}' +
+    '.pd-field input{font:inherit;padding:9px 10px;border:1px solid #cbd5e1;border-radius:8px;width:100%;box-sizing:border-box}' +
+    '.pd-add{font:inherit;padding:10px 16px;border:none;border-radius:8px;background:#0f172a;color:#fff;font-weight:700;cursor:pointer;width:100%}' +
+    '.pd-add:hover{background:#1e293b}' +
+    '#pd-toast{margin:10px 0 0;font-size:12px;color:#15803d;font-weight:600;min-height:18px}' +
+    '.pd-table{width:100%;border-collapse:collapse;font-size:13px;margin-top:8px}' +
+    '.pd-table th{text-align:left;padding:8px;background:#f8fafc;border-bottom:1px solid #e5e7eb;font-size:11px}' +
+    '.pd-table td{padding:8px;border-bottom:1px solid #f1f5f9;vertical-align:top;word-break:break-word}' +
+    '.pd-del{border:1px solid #fecaca;background:#fff;color:#b91c1c;border-radius:6px;padding:4px 10px;font-size:12px;font-weight:600;cursor:pointer;font:inherit}' +
+    '.pd-item{display:grid;grid-template-columns:5.5rem 1.25rem 1fr;gap:8px 12px;padding:0 0 22px;align-items:start}' +
+    '.pd-item-left{text-align:right;padding-top:2px}' +
+    '.pd-date{display:block;font-weight:800;font-size:12px;color:#0f172a}' +
+    '.pd-day{display:block;font-size:10px;color:#64748b;margin-top:2px}' +
+    '.pd-rail{display:flex;flex-direction:column;align-items:center;min-height:100%}' +
+    '.pd-dot{width:11px;height:11px;border-radius:999px;background:#6366f1;border:2px solid #6366f1;flex-shrink:0}' +
+    '.pd-dot-today{background:#0d9488;border-color:#0d9488;box-shadow:0 0 0 3px rgba(13,148,136,0.25)}' +
+    '.pd-dot-past{background:#0d9488;border-color:#0d9488}' +
+    '.pd-dot-future{background:#fff;border-color:#6366f1}' +
+    '.pd-dot-muted{background:#e2e8f0;border-color:#cbd5e1}' +
+    '.pd-line{flex:1;width:2px;background:#e2e8f0;margin-top:4px;min-height:22px}' +
+    '.pd-body{min-width:0}' +
+    '.pd-you{margin:0 0 6px;font-size:12px;font-weight:700;color:#0d9488}' +
+    '.pd-label{margin:0 0 6px;font-size:14px;font-weight:700;color:#0f172a;line-height:1.4}' +
+    '.pd-muted{margin:0;font-size:12px;color:#64748b}' +
+    '.pd-item-today .pd-body{background:#f0fdf4;border:1px solid #bbf7d0;border-radius:10px;padding:10px 12px}' +
+    '.pd-empty{margin:0;font-size:13px;color:#64748b;line-height:1.45}' +
+    '@media(min-width:960px){.pd-right{position:sticky;top:16px;max-height:calc(100vh - 32px);overflow-y:auto}}' +
     '</style>' +
     '<div class="pd-split">' +
     '<div class="pd-left">' +
     '<div class="pd-panel">' +
-    '<h2>Add important date</h2>' +
-    '<p class="pd-panel-lead">Pick a date, say why it matters, and click Add. Build your full schedule here — nothing is auto-generated.</p>' +
-    '<label class="pd-field"><span>Date</span><input type="date" id="pd-proj-date" aria-label="Date"/></label>' +
-    '<label class="pd-field"><span>Type</span><select id="pd-proj-track" aria-label="Date type"><option value="debt">Debt</option><option value="wedding">Wedding</option><option value="milestone">Other milestone</option></select></label>' +
-    '<label class="pd-field"><span>Why is this date important?</span><input type="text" id="pd-proj-label" autocomplete="off" placeholder="e.g. Pay off credit card, venue deposit due"/></label>' +
-    '<label class="pd-field"><span>Amount (optional, CAD)</span><input type="number" id="pd-proj-amt" min="0" step="0.01" inputmode="decimal" placeholder="0"/></label>' +
-    '<button type="button" id="pd-proj-add" class="pd-add-btn">Add date</button>' +
-    '<p id="pd-save-toast" aria-live="polite"></p>' +
+    '<h2>Add date</h2>' +
+    '<p class="pd-lead">Pick a calendar date and name its significance.</p>' +
+    '<label class="pd-field"><span>Date</span><input type="date" id="pd-date" aria-label="Date"/></label>' +
+    '<label class="pd-field"><span>Significance</span><input type="text" id="pd-label" autocomplete="off" placeholder="e.g. Debt-free day, venue booking deadline"/></label>' +
+    '<button type="button" id="pd-add" class="pd-add">Add date</button>' +
+    '<p id="pd-toast" aria-live="polite"></p>' +
     '</div>' +
     '<div class="pd-panel">' +
-    '<h2>Your dates</h2>' +
-    '<table class="pd-proj-table" aria-label="Important dates"><thead><tr><th>Date</th><th>Type</th><th>Label</th><th>Amt</th><th></th></tr></thead>' +
-    '<tbody id="pd-proj-tbody"><tr><td colspan="5">Loading…</td></tr></tbody></table>' +
-    '</div>' +
-    '<div class="pd-panel">' +
-    '<h2>Target dates</h2>' +
-    '<div class="pd-target-grid">' +
-    '<label class="pd-field"><span>Debt-free target</span><input type="date" id="pd-debt-target" aria-label="Debt-free target date"/></label>' +
-    '<p id="pd-debt-target-status" class="pd-status">Loading…</p>' +
-    '<label class="pd-field"><span>Wedding funded target</span><input type="date" id="pd-wed-target" aria-label="Wedding funded target date"/></label>' +
-    '<p id="pd-wed-target-status" class="pd-status">Loading…</p>' +
+    '<h2>All dates</h2>' +
+    '<table class="pd-table" aria-label="Projected dates"><thead><tr><th>Date</th><th>Significance</th><th></th></tr></thead>' +
+    '<tbody id="pd-list-tbody"><tr><td colspan="3">Loading…</td></tr></tbody></table>' +
     '</div></div>' +
-    '</div>' +
-    '<div class="pd-right">' +
-    '<div class="pd-panel">' +
-    '<h2>Overview</h2>' +
-    '<p class="pd-panel-lead">From your Debt tracker and Marriage cost balances (reference only — not added to timeline unless you add the date).</p>' +
-    '<div class="pd-kpis">' +
-    '<div class="pd-kpi"><p class="pd-kpi-lab">Debt left</p><p id="pd-kpi-debt-rem" class="pd-kpi-val">—</p><p id="pd-kpi-debt-mo" class="pd-kpi-sub">—</p><p id="pd-kpi-debt-proj" class="pd-kpi-sub">—</p></div>' +
-    '<div class="pd-kpi"><p class="pd-kpi-lab">Wedding left</p><p id="pd-kpi-wed-rem" class="pd-kpi-val">—</p><p id="pd-kpi-wed-mo" class="pd-kpi-sub">—</p><p id="pd-kpi-wed-proj" class="pd-kpi-sub">—</p></div>' +
+    '<div class="pd-right pd-panel">' +
+    '<h2>Calendar timeline</h2>' +
+    '<p class="pd-lead">Chronological view — date and weekday on the left, significance on the right.</p>' +
+    '<div id="pd-timeline" aria-live="polite"></div>' +
     '</div></div>' +
-    '<div class="pd-panel">' +
-    '<h2>Timeline</h2>' +
-    '<p class="pd-panel-lead">Green = logged · Purple dashed = dates you added · Gold = targets · Today highlighted.</p>' +
-    '<div id="pd-timeline" class="pd-timeline" aria-live="polite"></div>' +
-    '</div></div></div>' +
     script +
     '</div>'
   );
@@ -11932,7 +11865,7 @@ app.get('/', (req, res) => {
     </a>
     <a class="sb-card" href="/projected-date">
       <h2>Projected date</h2>
-      <span>Set debt-free and wedding target dates and see a combined payment timeline.</span>
+      <span>Add calendar dates and name what each one means — a simple significance timeline.</span>
     </a>
     </nav>
   </section>`
