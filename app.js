@@ -11698,7 +11698,9 @@ function buildProjectedDateWorkspaceHtml() {
     ';' +
     'var dates=[];' +
     'function esc(s){return String(s==null?"":s).split("<").join("&lt;").split(">").join("&gt;").split("\\"").join("&quot;");}' +
+    'function normalizeRow(r){if(!r||!r.date)return null;var lbl=String(r.label||r.note||"").trim();if(!lbl&&r.track)lbl=String(r.track)+" date";return{id:r.id||newId(),date:String(r.date).trim(),label:lbl||"Important date"};}' +
     'function newId(){return "pd-"+Date.now()+"-"+Math.random().toString(36).slice(2,8);}' +
+    'function loadRows(raw){if(!Array.isArray(raw))return[];var out=[];raw.forEach(function(r){var n=normalizeRow(r);if(n)out.push(n);});return out.sort(function(a,b){return String(a.date).localeCompare(String(b.date));});}' +
     'function saveList(cb){wsPut(SK,{projectedDates:dates},function(err){if(!err&&cb)cb();});}' +
     'function toast(msg){var el=document.getElementById("pd-toast");if(!el)return;el.textContent=msg||"";if(msg){setTimeout(function(){if(el.textContent===msg)el.textContent="";},2200);}}' +
     'function renderTable(){var tb=document.getElementById("pd-list-tbody");if(!tb)return;var list=dates.slice().sort(function(a,b){return String(a.date).localeCompare(String(b.date));});tb.innerHTML="";if(!list.length){tb.innerHTML="<tr><td colspan=\\"3\\">No dates yet.</td></tr>";return;}list.forEach(function(row){var tr=document.createElement("tr");tr.innerHTML="<td>"+esc(row.date)+"</td><td>"+esc(row.label||"")+"</td><td><button type=\\"button\\" class=\\"pd-del\\" data-id=\\""+esc(row.id)+"\\">Delete</button></td>";tb.appendChild(tr);});}' +
@@ -11709,13 +11711,14 @@ function buildProjectedDateWorkspaceHtml() {
     'document.getElementById("pd-add").addEventListener("click",addDate);' +
     'document.getElementById("pd-list-tbody").addEventListener("click",function(ev){var btn=ev.target.closest&&ev.target.closest(".pd-del");if(btn)delDate(btn.getAttribute("data-id"));});' +
     'var di=document.getElementById("pd-date");if(di&&!di.value)di.value=new Date().toISOString().slice(0,10);' +
-    'wsGet(SK,function(err,data){dates=data&&Array.isArray(data.projectedDates)?data.projectedDates.slice():[];renderAll();});' +
+    'wsGet(SK,function(err,data){dates=loadRows(data&&data.projectedDates);renderAll();});' +
+    'var labelInp=document.getElementById("pd-label");if(labelInp)labelInp.addEventListener("keydown",function(ev){if(ev.key==="Enter"){ev.preventDefault();addDate();}});' +
     '})();';
   const script = '<script>' + clientJs + '<' + '/script>';
   return (
     '<div class="analytics-toolbar">' +
     '<div><h1>Projected date</h1>' +
-    '<p class="sub">Calendar only — add dates and name what each one means. No amounts or payment math.</p></div>' +
+    '<p class="sub">Calendar + significance only (v2). Date picker and a text label — no amounts, debt, or wedding data.</p></div>' +
     '<div class="analytics-toolbar-actions">' +
     '<a class="link-pill" href="/">Home</a>' +
     '</div></div>' +
@@ -11917,6 +11920,9 @@ app.get('/marriage-cost', (req, res) => {
 });
 
 app.get('/projected-date', (req, res) => {
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.set('Pragma', 'no-cache');
+  res.set('Expires', '0');
   const canvas = buildProjectedDateWorkspaceHtml();
   res.type('html').send(renderSecondBrainWorkspace('Projected date — Third brain', '/projected-date', canvas));
 });
